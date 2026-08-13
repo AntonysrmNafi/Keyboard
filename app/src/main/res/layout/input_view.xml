@@ -2,14 +2,17 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:background="@color/keyboard_bg"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
 
     <LinearLayout
         android:id="@+id/suggestion_strip"
         android:layout_width="match_parent"
-        android:layout_height="40dp"
+        android:layout_height="42dp"
         android:orientation="horizontal"
-        android:background="#1E1E1E"
+        android:background="@color/keyboard_bg"
         android:weightSum="3">
 
         <TextView
@@ -18,7 +21,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:gravity="center"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/suggestion_text"
             android:textSize="16sp" />
 
         <TextView
@@ -27,7 +30,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:gravity="center"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/suggestion_text"
             android:textSize="16sp" />
 
         <TextView
@@ -36,13 +39,22 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:gravity="center"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/suggestion_text"
             android:textSize="16sp" />
     </LinearLayout>
 
     <android.inputmethodservice.KeyboardView
         android:id="@+id/keyboard_view"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:layout_marginEnd="6dp"
+        android:background="@color/keyboard_bg"
+        android:keyBackground="@drawable/key_background"
+        android:keyTextColor="@color/key_text"
+        android:keyTextSize="20sp"
+        android:labelTextSize="14sp"
+        android:shadowColor="#00000000"
+        android:shadowRadius="0" />
 
 </LinearLayout>
