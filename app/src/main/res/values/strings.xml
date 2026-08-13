@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Privacy Keyboard</string>
+    <string name="app_name">BlockVeil Keyboard</string>
+    <string name="tagline">Fully offline. No tracking, no ads.</string>
+    <string name="enable_keyboard">Enable Keyboard</string>
+    <string name="select_keyboard">Switch to BlockVeil Keyboard</string>
+    <string name="privacy_note">This keyboard never connects to the internet and never stores what you type.</string>
+    <string name="status_enabled">BlockVeil Keyboard is enabled. Tap below to switch to it.</string>
+    <string name="status_disabled">BlockVeil Keyboard is not enabled yet. Tap Enable Keyboard, then turn it on in the list.</string>
 </resources>
