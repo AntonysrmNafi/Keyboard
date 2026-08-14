@@ -58,7 +58,7 @@ object SettingsItems {
             SettingsStore.KEY_ENABLE_NUMBER_ROW,
             "Enable number row",
             "Adds a 0-9 row above the letters (English and Bangla phonetic modes)",
-            false
+            true
         ),
         ToggleItem(
             SettingsStore.KEY_SPACE_CURSOR_ENABLED,
