@@ -28,6 +28,12 @@ object SettingsItems {
             true
         ),
         ToggleItem(
+            SettingsStore.KEY_DOUBLE_SPACE_TAB,
+            "Double-space tab",
+            "Double tap space inserts a tab instead of a period",
+            false
+        ),
+        ToggleItem(
             SettingsStore.KEY_VIBRATE_ON_KEYPRESS,
             "Vibrate on keypress",
             "Short vibration on every key",
@@ -53,6 +59,12 @@ object SettingsItems {
             "Enable number row",
             "Adds a 0-9 row above the letters (English and Bangla phonetic modes)",
             false
+        ),
+        ToggleItem(
+            SettingsStore.KEY_SPACE_CURSOR_ENABLED,
+            "Space cursor",
+            "Swipe left or right on the spacebar to move the text cursor",
+            true
         )
     )
 
