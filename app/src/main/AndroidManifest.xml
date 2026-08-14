@@ -37,6 +37,11 @@
             android:exported="false"
             android:theme="@style/Theme.BlockVeil" />
 
+        <activity
+            android:name=".AdvancedSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BlockVeil" />
+
         <service
             android:name=".PrivacyInputMethodService"
             android:label="@string/app_name"
