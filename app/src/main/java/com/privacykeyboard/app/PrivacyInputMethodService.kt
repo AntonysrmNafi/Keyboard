@@ -7,6 +7,7 @@ import android.media.AudioManager
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -19,7 +20,7 @@ import android.widget.TextView
 // no keystroke logging, no persistence of typed text.
 class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardActionListener {
 
-    private lateinit var keyboardView: KeyboardView
+    private lateinit var keyboardView: BlockVeilKeyboardView
     private lateinit var suggestionStrip: LinearLayout
 
     private lateinit var englishKeyboardPlain: Keyboard
@@ -63,6 +64,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
         keyboardView = view.findViewById(R.id.keyboard_view)
         keyboardView.setOnKeyboardActionListener(this)
+        keyboardView.onCursorSwipe = { steps -> moveCursor(steps) }
 
         suggestionStrip = view.findViewById(R.id.suggestion_strip)
         suggestion1 = view.findViewById(R.id.suggestion_1)
@@ -89,6 +91,24 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         keyboardView.isPreviewEnabled = SettingsStore.getBoolean(this, SettingsStore.KEY_POPUP_ON_KEYPRESS, true)
         val showSuggestions = SettingsStore.getBoolean(this, SettingsStore.KEY_SHOW_SUGGESTIONS, true)
         suggestionStrip.visibility = if (showSuggestions) View.VISIBLE else View.GONE
+
+        keyboardView.spaceCursorEnabled = SettingsStore.getBoolean(this, SettingsStore.KEY_SPACE_CURSOR_ENABLED, true)
+        val speedLevel = SettingsStore.getInt(this, SettingsStore.KEY_SPACE_CURSOR_SPEED, 1)
+        val density = resources.displayMetrics.density
+        keyboardView.pixelsPerCursorStep = when (speedLevel) {
+            0 -> 48f * density // Slow, needs more drag per step
+            2 -> 24f * density // Fast, needs less drag per step
+            else -> 36f * density // Default
+        }
+    }
+
+    private fun moveCursor(steps: Int) {
+        val ic = currentInputConnection ?: return
+        val keyCode = if (steps > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
+        repeat(kotlin.math.abs(steps)) {
+            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+        }
     }
 
     private fun applyKeyboardForMode() {
@@ -191,9 +211,19 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     }
 
     private fun handleSpace(ic: InputConnection) {
+        val doubleSpaceTab = SettingsStore.getBoolean(this, SettingsStore.KEY_DOUBLE_SPACE_TAB, false)
         val doubleSpacePeriod = SettingsStore.getBoolean(this, SettingsStore.KEY_DOUBLE_SPACE_PERIOD, true)
 
-        if (doubleSpacePeriod && lastCommittedWasSpace && rawWordBuffer.isEmpty()) {
+        if (doubleSpaceTab && lastCommittedWasSpace && rawWordBuffer.isEmpty()) {
+            // Replace the previous lone space with a tab character
+            ic.deleteSurroundingText(1, 0)
+            ic.commitText("\t", 1)
+            lastCommittedWasSpace = false
+            resetWordState()
+            return
+        }
+
+        if (!doubleSpaceTab && doubleSpacePeriod && lastCommittedWasSpace && rawWordBuffer.isEmpty()) {
             // Replace the previous lone space with ". "
             ic.deleteSurroundingText(1, 0)
             ic.commitText(". ", 1)
