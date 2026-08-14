@@ -20,7 +20,11 @@ class InfoActivity : Activity() {
         const val EXTRA_TITLE = "title"
         const val EXTRA_BODY = "body"
 
-        const val RELEASE_NOTES = """Version 1.0
+        const val RELEASE_NOTES = """Version 1.1
+- Space cursor: swipe the spacebar left/right to move the text cursor, speed adjustable in Advanced
+- Double-space tab option added alongside double-space period
+
+Version 1.0
 - First release
 - English, Bangla phonetic and Bangla traditional typing modes
 - Offline suggestion bar
@@ -31,8 +35,6 @@ class InfoActivity : Activity() {
 
 A fully offline Android keyboard. No INTERNET permission is requested, so the app cannot send anything anywhere. No keystrokes are logged. Word suggestions come only from a small local word list bundled with the app.
 
-Advanced tuning options (long-press delay, cursor speed, and similar) are not implemented yet in this version."""
-
-        const val ADVANCED_TEXT = """Advanced tuning options such as key popup delay, long-press delay, and cursor speed are not implemented in this version yet. This screen is a placeholder so the menu structure stays consistent."""
+Some features from other keyboard apps are intentionally left out because they require an internet connection (GIF search, personalized suggestions that learn from typed data, cloud voice typing, downloadable language packs) which would break the offline-only design of this app."""
     }
 }
