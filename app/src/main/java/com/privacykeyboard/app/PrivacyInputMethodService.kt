@@ -4,9 +4,7 @@ import android.inputmethodservice.InputMethodService
 import android.inputmethodservice.Keyboard
 import android.inputmethodservice.KeyboardView
 import android.media.AudioManager
-import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
+import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -16,7 +14,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 // Fully offline IME with English, Bangla phonetic and Bangla traditional modes,
-// wired to user-configurable preferences from SettingsStore. No network permission,
+// plus a two-page symbols/numbers keyboard reached via the ?123 key.
+// Wired to user-configurable preferences from SettingsStore. No network permission,
 // no keystroke logging, no persistence of typed text.
 class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardActionListener {
 
@@ -26,6 +25,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     private lateinit var englishKeyboardPlain: Keyboard
     private lateinit var englishKeyboardWithNumRow: Keyboard
     private lateinit var traditionalKeyboard: Keyboard
+    private lateinit var symbolsKeyboard1: Keyboard
+    private lateinit var symbolsKeyboard2: Keyboard
 
     private lateinit var suggestion1: TextView
     private lateinit var suggestion2: TextView
@@ -33,6 +34,11 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     private var mode: InputMode = InputMode.ENGLISH
     private var isShifted = false
+
+    // ?123 symbols overlay state. Independent from the letter mode above,
+    // exactly like Gboard: pressing ABC returns to whichever letter mode was active.
+    private var showingSymbols = false
+    private var symbolsPageTwo = false
 
     // Raw keys typed for the current word, drives phonetic conversion and suggestions
     private val rawWordBuffer = StringBuilder()
@@ -43,8 +49,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     private var capitalizeNext = true
     private var lastCommittedWasSpace = false
 
-    private var vibrator: Vibrator? = null
-
     // A small, editable blocklist. Add more words as needed, one per entry.
     private val offensiveWordsEn = setOf<String>()
     private val offensiveWordsBn = setOf<String>()
@@ -52,7 +56,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     override fun onCreate() {
         super.onCreate()
         DictionaryProvider.load(this)
-        vibrator = getSystemService(VIBRATOR_SERVICE) as? Vibrator
     }
 
     override fun onCreateInputView(): View {
@@ -61,6 +64,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         englishKeyboardPlain = Keyboard(this, R.xml.keys_layout_english)
         englishKeyboardWithNumRow = Keyboard(this, R.xml.keys_layout_english_numrow)
         traditionalKeyboard = Keyboard(this, R.xml.keys_layout_bangla_traditional)
+        symbolsKeyboard1 = Keyboard(this, R.xml.keys_layout_symbols1)
+        symbolsKeyboard2 = Keyboard(this, R.xml.keys_layout_symbols2)
 
         keyboardView = view.findViewById(R.id.keyboard_view)
         keyboardView.setOnKeyboardActionListener(this)
@@ -83,6 +88,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         isShifted = false
         capitalizeNext = true
         lastCommittedWasSpace = false
+        showingSymbols = false
+        symbolsPageTwo = false
         applySettings()
         applyKeyboardForMode()
     }
@@ -112,10 +119,13 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     }
 
     private fun applyKeyboardForMode() {
-        val useNumberRow = SettingsStore.getBoolean(this, SettingsStore.KEY_ENABLE_NUMBER_ROW, false)
-        keyboardView.keyboard = when (mode) {
-            InputMode.BANGLA_TRADITIONAL -> traditionalKeyboard
-            else -> if (useNumberRow) englishKeyboardWithNumRow else englishKeyboardPlain
+        val useNumberRow = SettingsStore.getBoolean(this, SettingsStore.KEY_ENABLE_NUMBER_ROW, true)
+        keyboardView.keyboard = when {
+            showingSymbols && symbolsPageTwo -> symbolsKeyboard2
+            showingSymbols -> symbolsKeyboard1
+            mode == InputMode.BANGLA_TRADITIONAL -> traditionalKeyboard
+            useNumberRow -> englishKeyboardWithNumRow
+            else -> englishKeyboardPlain
         }
         keyboardView.invalidateAllKeys()
     }
@@ -138,21 +148,39 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
                 ic.performEditorAction(EditorInfo.IME_ACTION_DONE)
             }
             MODE_SWITCH_CODE -> switchMode()
+            SYMBOLS_TOGGLE_CODE -> {
+                showingSymbols = true
+                symbolsPageTwo = false
+                resetWordState()
+                applyKeyboardForMode()
+            }
+            SYMBOLS_MORE_CODE -> {
+                symbolsPageTwo = true
+                applyKeyboardForMode()
+            }
+            SYMBOLS_LESS_CODE -> {
+                symbolsPageTwo = false
+                applyKeyboardForMode()
+            }
+            ABC_RETURN_CODE -> {
+                showingSymbols = false
+                symbolsPageTwo = false
+                resetWordState()
+                applyKeyboardForMode()
+            }
             else -> handleCharacter(ic, primaryCode)
         }
     }
 
     private fun giveKeyFeedback() {
         if (SettingsStore.getBoolean(this, SettingsStore.KEY_VIBRATE_ON_KEYPRESS, false)) {
-            val v = vibrator
-            if (v != null && v.hasVibrator()) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    v.vibrate(VibrationEffect.createOneShot(12, VibrationEffect.DEFAULT_AMPLITUDE))
-                } else {
-                    @Suppress("DEPRECATION")
-                    v.vibrate(12)
-                }
-            }
+            // performHapticFeedback (with the ignore-global-setting flag) reliably triggers
+            // a short vibration for this specific press, even on phones where a raw
+            // Vibrator.vibrate() call gets silently swallowed by OEM battery/vibration policies.
+            keyboardView.performHapticFeedback(
+                HapticFeedbackConstants.KEYBOARD_TAP,
+                HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+            )
         }
         if (SettingsStore.getBoolean(this, SettingsStore.KEY_SOUND_ON_KEYPRESS, false)) {
             val audioManager = getSystemService(AUDIO_SERVICE) as? AudioManager
@@ -178,13 +206,13 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     private fun handleCharacter(ic: InputConnection, primaryCode: Int) {
         var typedChar = primaryCode.toChar()
-        if (isShifted && mode != InputMode.BANGLA_TRADITIONAL) {
+        if (isShifted && mode != InputMode.BANGLA_TRADITIONAL && !showingSymbols) {
             typedChar = typedChar.uppercaseChar()
         }
 
         // Auto-capitalization: force the first letter of a new sentence to uppercase
         val autoCap = SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)
-        if (autoCap && capitalizeNext && mode == InputMode.ENGLISH && typedChar.isLetter()) {
+        if (!showingSymbols && autoCap && capitalizeNext && mode == InputMode.ENGLISH && typedChar.isLetter()) {
             typedChar = typedChar.uppercaseChar()
             capitalizeNext = false
         } else if (typedChar.isLetter()) {
@@ -193,9 +221,13 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
         if (typedChar == ' ') {
             handleSpace(ic)
-        } else if (typedChar == '.') {
+        } else if (typedChar == '.' && !showingSymbols) {
             commitWordBoundary(ic, ".")
             if (autoCap) capitalizeNext = true
+            lastCommittedWasSpace = false
+        } else if (showingSymbols) {
+            // Symbols/numbers are committed directly, no word buffering or suggestions.
+            ic.commitText(typedChar.toString(), 1)
             lastCommittedWasSpace = false
         } else {
             appendToWord(ic, typedChar)
@@ -211,6 +243,12 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     }
 
     private fun handleSpace(ic: InputConnection) {
+        if (showingSymbols) {
+            ic.commitText(" ", 1)
+            lastCommittedWasSpace = true
+            return
+        }
+
         val doubleSpaceTab = SettingsStore.getBoolean(this, SettingsStore.KEY_DOUBLE_SPACE_TAB, false)
         val doubleSpacePeriod = SettingsStore.getBoolean(this, SettingsStore.KEY_DOUBLE_SPACE_PERIOD, true)
 
@@ -259,6 +297,11 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     }
 
     private fun handleDelete(ic: InputConnection) {
+        if (showingSymbols) {
+            ic.deleteSurroundingText(1, 0)
+            return
+        }
+
         if (rawWordBuffer.isNotEmpty()) {
             rawWordBuffer.deleteCharAt(rawWordBuffer.length - 1)
 
@@ -335,5 +378,9 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     companion object {
         const val MODE_SWITCH_CODE = -10
+        const val SYMBOLS_TOGGLE_CODE = -20
+        const val SYMBOLS_MORE_CODE = -21
+        const val ABC_RETURN_CODE = -22
+        const val SYMBOLS_LESS_CODE = -24
     }
 }
