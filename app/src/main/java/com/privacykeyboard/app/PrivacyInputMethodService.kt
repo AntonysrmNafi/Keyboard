@@ -3,18 +3,27 @@ package com.privacykeyboard.app
 import android.inputmethodservice.InputMethodService
 import android.inputmethodservice.Keyboard
 import android.inputmethodservice.KeyboardView
+import android.media.AudioManager
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.view.LayoutInflater
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import android.widget.LinearLayout
 import android.widget.TextView
 
-// Fully offline IME with English, Bangla phonetic and Bangla traditional modes.
-// No network permission, no keystroke logging, no persistence of typed text.
+// Fully offline IME with English, Bangla phonetic and Bangla traditional modes,
+// wired to user-configurable preferences from SettingsStore. No network permission,
+// no keystroke logging, no persistence of typed text.
 class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardActionListener {
 
     private lateinit var keyboardView: KeyboardView
-    private lateinit var englishKeyboard: Keyboard
+    private lateinit var suggestionStrip: LinearLayout
+
+    private lateinit var englishKeyboardPlain: Keyboard
+    private lateinit var englishKeyboardWithNumRow: Keyboard
     private lateinit var traditionalKeyboard: Keyboard
 
     private lateinit var suggestion1: TextView
@@ -29,21 +38,33 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     // Length of text currently committed to the input field for the active word
     private var committedWordLength = 0
 
+    // Auto-capitalization / double-space-period state
+    private var capitalizeNext = true
+    private var lastCommittedWasSpace = false
+
+    private var vibrator: Vibrator? = null
+
+    // A small, editable blocklist. Add more words as needed, one per entry.
+    private val offensiveWordsEn = setOf<String>()
+    private val offensiveWordsBn = setOf<String>()
+
     override fun onCreate() {
         super.onCreate()
         DictionaryProvider.load(this)
+        vibrator = getSystemService(VIBRATOR_SERVICE) as? Vibrator
     }
 
     override fun onCreateInputView(): View {
         val view = LayoutInflater.from(this).inflate(R.layout.input_view, null)
 
-        englishKeyboard = Keyboard(this, R.xml.keys_layout_english)
+        englishKeyboardPlain = Keyboard(this, R.xml.keys_layout_english)
+        englishKeyboardWithNumRow = Keyboard(this, R.xml.keys_layout_english_numrow)
         traditionalKeyboard = Keyboard(this, R.xml.keys_layout_bangla_traditional)
 
         keyboardView = view.findViewById(R.id.keyboard_view)
-        keyboardView.keyboard = englishKeyboard
         keyboardView.setOnKeyboardActionListener(this)
 
+        suggestionStrip = view.findViewById(R.id.suggestion_strip)
         suggestion1 = view.findViewById(R.id.suggestion_1)
         suggestion2 = view.findViewById(R.id.suggestion_2)
         suggestion3 = view.findViewById(R.id.suggestion_3)
@@ -58,11 +79,24 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         super.onStartInputView(info, restarting)
         resetWordState()
         isShifted = false
+        capitalizeNext = true
+        lastCommittedWasSpace = false
+        applySettings()
         applyKeyboardForMode()
     }
 
+    private fun applySettings() {
+        keyboardView.isPreviewEnabled = SettingsStore.getBoolean(this, SettingsStore.KEY_POPUP_ON_KEYPRESS, true)
+        val showSuggestions = SettingsStore.getBoolean(this, SettingsStore.KEY_SHOW_SUGGESTIONS, true)
+        suggestionStrip.visibility = if (showSuggestions) View.VISIBLE else View.GONE
+    }
+
     private fun applyKeyboardForMode() {
-        keyboardView.keyboard = if (mode == InputMode.BANGLA_TRADITIONAL) traditionalKeyboard else englishKeyboard
+        val useNumberRow = SettingsStore.getBoolean(this, SettingsStore.KEY_ENABLE_NUMBER_ROW, false)
+        keyboardView.keyboard = when (mode) {
+            InputMode.BANGLA_TRADITIONAL -> traditionalKeyboard
+            else -> if (useNumberRow) englishKeyboardWithNumRow else englishKeyboardPlain
+        }
         keyboardView.invalidateAllKeys()
     }
 
@@ -74,6 +108,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     override fun onKey(primaryCode: Int, keyCodes: IntArray?) {
         val ic = currentInputConnection ?: return
+        giveKeyFeedback()
 
         when (primaryCode) {
             Keyboard.KEYCODE_DELETE -> handleDelete(ic)
@@ -87,16 +122,36 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         }
     }
 
+    private fun giveKeyFeedback() {
+        if (SettingsStore.getBoolean(this, SettingsStore.KEY_VIBRATE_ON_KEYPRESS, false)) {
+            val v = vibrator
+            if (v != null && v.hasVibrator()) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    v.vibrate(VibrationEffect.createOneShot(12, VibrationEffect.DEFAULT_AMPLITUDE))
+                } else {
+                    @Suppress("DEPRECATION")
+                    v.vibrate(12)
+                }
+            }
+        }
+        if (SettingsStore.getBoolean(this, SettingsStore.KEY_SOUND_ON_KEYPRESS, false)) {
+            val audioManager = getSystemService(AUDIO_SERVICE) as? AudioManager
+            audioManager?.playSoundEffect(AudioManager.FX_KEYPRESS_STANDARD)
+        }
+    }
+
     private fun toggleShift() {
         isShifted = !isShifted
-        englishKeyboard.isShifted = isShifted
+        englishKeyboardPlain.isShifted = isShifted
+        englishKeyboardWithNumRow.isShifted = isShifted
         keyboardView.invalidateAllKeys()
     }
 
     private fun switchMode() {
         mode = mode.next()
         isShifted = false
-        englishKeyboard.isShifted = false
+        englishKeyboardPlain.isShifted = false
+        englishKeyboardWithNumRow.isShifted = false
         resetWordState()
         applyKeyboardForMode()
     }
@@ -107,17 +162,49 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             typedChar = typedChar.uppercaseChar()
         }
 
-        if (typedChar == ' ' || typedChar == '.') {
-            commitWordBoundary(ic, typedChar.toString())
+        // Auto-capitalization: force the first letter of a new sentence to uppercase
+        val autoCap = SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)
+        if (autoCap && capitalizeNext && mode == InputMode.ENGLISH && typedChar.isLetter()) {
+            typedChar = typedChar.uppercaseChar()
+            capitalizeNext = false
+        } else if (typedChar.isLetter()) {
+            capitalizeNext = false
+        }
+
+        if (typedChar == ' ') {
+            handleSpace(ic)
+        } else if (typedChar == '.') {
+            commitWordBoundary(ic, ".")
+            if (autoCap) capitalizeNext = true
+            lastCommittedWasSpace = false
         } else {
             appendToWord(ic, typedChar)
+            lastCommittedWasSpace = false
         }
 
         if (isShifted && mode != InputMode.BANGLA_TRADITIONAL) {
             isShifted = false
-            englishKeyboard.isShifted = false
+            englishKeyboardPlain.isShifted = false
+            englishKeyboardWithNumRow.isShifted = false
             keyboardView.invalidateAllKeys()
         }
+    }
+
+    private fun handleSpace(ic: InputConnection) {
+        val doubleSpacePeriod = SettingsStore.getBoolean(this, SettingsStore.KEY_DOUBLE_SPACE_PERIOD, true)
+
+        if (doubleSpacePeriod && lastCommittedWasSpace && rawWordBuffer.isEmpty()) {
+            // Replace the previous lone space with ". "
+            ic.deleteSurroundingText(1, 0)
+            ic.commitText(". ", 1)
+            capitalizeNext = SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)
+            lastCommittedWasSpace = false
+            resetWordState()
+            return
+        }
+
+        commitWordBoundary(ic, " ")
+        lastCommittedWasSpace = true
     }
 
     private fun appendToWord(ic: InputConnection, typedChar: Char) {
@@ -159,6 +246,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             ic.deleteSurroundingText(1, 0)
             clearSuggestions()
         }
+        lastCommittedWasSpace = false
     }
 
     private fun commitWordBoundary(ic: InputConnection, boundaryText: String) {
@@ -175,17 +263,27 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             ic.deleteSurroundingText(committedWordLength, 0)
         }
         ic.commitText("$word ", 1)
+        lastCommittedWasSpace = true
         resetWordState()
     }
 
     private fun updateSuggestions() {
+        if (!SettingsStore.getBoolean(this, SettingsStore.KEY_SHOW_SUGGESTIONS, true)) return
+
         val isBangla = mode != InputMode.ENGLISH
         val query = if (mode == InputMode.BANGLA_PHONETIC) {
             PhoneticEngine.transliterate(rawWordBuffer.toString())
         } else {
             rawWordBuffer.toString()
         }
-        val results = DictionaryProvider.suggestions(query, isBangla)
+
+        var results = DictionaryProvider.suggestions(query, isBangla)
+
+        if (SettingsStore.getBoolean(this, SettingsStore.KEY_BLOCK_OFFENSIVE_WORDS, true)) {
+            val blocklist = if (isBangla) offensiveWordsBn else offensiveWordsEn
+            results = results.filterNot { blocklist.contains(it.lowercase()) }
+        }
+
         listOf(suggestion1, suggestion2, suggestion3).forEachIndexed { index, tv ->
             tv.text = results.getOrNull(index) ?: ""
         }
