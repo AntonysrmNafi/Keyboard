@@ -30,7 +30,7 @@ class SettingsMenuActivity : Activity() {
             openSection(SettingsItems.SECTION_TEXT_CORRECTION)
         })
         container.addView(buildMenuRow("Advanced", "Fine-tuning options") {
-            openInfo("Advanced", InfoActivity.ADVANCED_TEXT)
+            startActivity(Intent(this, AdvancedSettingsActivity::class.java))
         })
         container.addView(buildMenuRow("Release notes", null) {
             openInfo("Release notes", InfoActivity.RELEASE_NOTES)
