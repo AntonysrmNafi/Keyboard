@@ -1,0 +1,86 @@
+package com.privacykeyboard.app
+
+import android.app.Activity
+import android.content.Intent
+import android.os.Bundle
+import android.view.Gravity
+import android.widget.LinearLayout
+import android.widget.TextView
+
+// Top-level settings menu: Preferences, Appearance & Layouts, Text correction,
+// Advanced, Release notes, About. Matches the section grouping style of
+// well-known keyboard apps, trimmed to only what BlockVeil actually implements.
+class SettingsMenuActivity : Activity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_settings_menu)
+
+        findViewById<TextView>(R.id.back_button).setOnClickListener { finish() }
+
+        val container = findViewById<LinearLayout>(R.id.menu_container)
+
+        container.addView(buildMenuRow("Preferences", "Typing behavior and keypress feedback") {
+            openSection(SettingsItems.SECTION_PREFERENCES)
+        })
+        container.addView(buildMenuRow("Appearance & Layouts", "Number row and layout options") {
+            openSection(SettingsItems.SECTION_APPEARANCE)
+        })
+        container.addView(buildMenuRow("Text correction", "Suggestions and word filtering") {
+            openSection(SettingsItems.SECTION_TEXT_CORRECTION)
+        })
+        container.addView(buildMenuRow("Advanced", "Fine-tuning options") {
+            openInfo("Advanced", InfoActivity.ADVANCED_TEXT)
+        })
+        container.addView(buildMenuRow("Release notes", null) {
+            openInfo("Release notes", InfoActivity.RELEASE_NOTES)
+        })
+        container.addView(buildMenuRow("About", "About BlockVeil Keyboard") {
+            openInfo("About", InfoActivity.ABOUT_TEXT)
+        })
+    }
+
+    private fun openSection(section: String) {
+        startActivity(
+            Intent(this, SettingsSectionActivity::class.java)
+                .putExtra(SettingsSectionActivity.EXTRA_SECTION, section)
+        )
+    }
+
+    private fun openInfo(title: String, body: String) {
+        startActivity(
+            Intent(this, InfoActivity::class.java)
+                .putExtra(InfoActivity.EXTRA_TITLE, title)
+                .putExtra(InfoActivity.EXTRA_BODY, body)
+        )
+    }
+
+    private fun buildMenuRow(title: String, subtitle: String?, onClick: () -> Unit): LinearLayout {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(20), dp(16), dp(20), dp(16))
+            setOnClickListener { onClick() }
+            isClickable = true
+            isFocusable = true
+        }
+
+        row.addView(TextView(this).apply {
+            text = title
+            setTextColor(resources.getColor(R.color.text_primary))
+            textSize = 16f
+        })
+
+        if (subtitle != null) {
+            row.addView(TextView(this).apply {
+                text = subtitle
+                setTextColor(resources.getColor(R.color.text_secondary))
+                textSize = 12f
+            })
+        }
+
+        return row
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+}
