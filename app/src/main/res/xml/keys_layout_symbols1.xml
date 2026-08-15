@@ -3,7 +3,7 @@
     android:keyWidth="10%p"
     android:keyHeight="50dp"
     android:horizontalGap="2%p"
-    android:verticalGap="8dp">
+    android:verticalGap="6dp">
 
     <Row>
         <Key android:codes="49" android:keyLabel="1" />
@@ -37,7 +37,7 @@
         <Key android:codes="58" android:keyLabel=":" />
         <Key android:codes="59" android:keyLabel=";" />
         <Key android:codes="63" android:keyLabel="?" />
-        <Key android:codes="-5" android:keyLabel="Del" android:keyWidth="15%p" />
+        <Key android:codes="-5" android:keyLabel="&#9003;" android:keyWidth="15%p" />
     </Row>
     <Row>
         <Key android:codes="-22" android:keyLabel="ABC" android:keyWidth="15%p" />
