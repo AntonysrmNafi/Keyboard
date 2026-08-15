@@ -3,17 +3,19 @@ package com.privacykeyboard.app
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.RectF
 import android.inputmethodservice.Keyboard
 import android.inputmethodservice.KeyboardView
 import android.util.AttributeSet
 import android.view.MotionEvent
 import kotlin.math.abs
 
-// Extends the stock KeyboardView with two extra gestures:
-// 1. Horizontal drag on the spacebar moves the text cursor instead of typing spaces.
-// 2. Long-press on a key with a registered "hint" (small corner digit on the top
-//    letter row) inserts that hint character instead of the normal letter.
-// A normal tap on either falls through to the regular key-press flow.
+// Fully custom-drawn keyboard view so letter keys and function keys (shift,
+// backspace, enter, ?123, ABC, mode switch) can have different colors -
+// something the stock single keyBackground drawable can't do. Also adds two
+// gestures on top of the normal tap: horizontal drag on the spacebar moves the
+// text cursor, and long-press on a key with a registered "hint" inserts that
+// hint character (a lightweight number row on the top letter row).
 class BlockVeilKeyboardView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -24,16 +26,19 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     var pixelsPerCursorStep: Float = 60f
     var onCursorSwipe: ((steps: Int) -> Unit)? = null
 
-    // Maps a key's primary code to the hint character shown in its corner and
-    // inserted on long-press. Empty map / hintsEnabled=false means no hints at all.
     var hintMap: Map<Int, String> = emptyMap()
     var hintsEnabled: Boolean = true
     var onHintLongPress: ((hint: String) -> Unit)? = null
+
+    // Key codes rendered with the "function key" color instead of the letter color.
+    var functionKeyCodes: Set<Int> = setOf(-1, -5, -4, -10, -20, -21, -22, -24)
 
     private var trackingSpaceKey = false
     private var isSwiping = false
     private var startX = 0f
     private var accumulatedDeltaX = 0f
+
+    private var pressedKeyCode: Int? = null
 
     private val longPressHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var longPressRunnable: Runnable? = null
@@ -41,27 +46,81 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private var longPressStartX = 0f
     private var longPressStartY = 0f
 
-    private val hintPaint = Paint().apply {
-        isAntiAlias = true
+    private val density = context.resources.displayMetrics.density
+    private val cornerRadius = 10f * density
+
+    private val letterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFA9E6C4.toInt() }
+    private val letterPressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF8FD0AC.toInt() }
+    private val functionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1B4D3E.toInt() }
+    private val functionPressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF123A2E.toInt() }
+
+    private val letterLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF0D1F1A.toInt()
+        textAlign = Paint.Align.CENTER
+        textSize = context.resources.displayMetrics.scaledDensity * 18f
+    }
+    private val functionLabelPaint = Paint(letterLabelPaint).apply {
+        color = 0xFFFFFFFF.toInt()
+        textSize = context.resources.displayMetrics.scaledDensity * 13f
+    }
+    private val spaceLabelPaint = Paint(letterLabelPaint).apply {
+        color = 0xFF3A5F52.toInt()
+        textSize = context.resources.displayMetrics.scaledDensity * 13f
+    }
+    private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.RIGHT
         color = 0xFF0D1F1A.toInt()
-        textSize = context.resources.displayMetrics.density * 10f
+        textSize = density * 10f
     }
 
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        if (!hintsEnabled || hintMap.isEmpty()) return
+    private val rect = RectF()
 
+    override fun onDraw(canvas: Canvas) {
         val kb = keyboard ?: return
+
         for (key in kb.keys) {
-            val code = key.codes.firstOrNull() ?: continue
-            val hint = hintMap[code] ?: continue
-            canvas.drawText(
-                hint,
-                (key.x + key.width - 6f * resources.displayMetrics.density),
-                (key.y + 16f * resources.displayMetrics.density),
-                hintPaint
+            val code = key.codes.firstOrNull() ?: 0
+            val isFunction = functionKeyCodes.contains(code)
+            val pressed = pressedKeyCode == code
+
+            val bgPaint = when {
+                isFunction && pressed -> functionPressedPaint
+                isFunction -> functionPaint
+                pressed -> letterPressedPaint
+                else -> letterPaint
+            }
+
+            rect.set(
+                key.x.toFloat(),
+                key.y.toFloat(),
+                (key.x + key.width).toFloat(),
+                (key.y + key.height).toFloat()
             )
+            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, bgPaint)
+
+            val label = key.label?.toString()
+            if (!label.isNullOrEmpty()) {
+                val labelPaint = when {
+                    code == 32 -> spaceLabelPaint
+                    isFunction -> functionLabelPaint
+                    else -> letterLabelPaint
+                }
+                val textY = rect.centerY() - (labelPaint.descent() + labelPaint.ascent()) / 2f
+                canvas.drawText(label, rect.centerX(), textY, labelPaint)
+            }
+        }
+
+        if (hintsEnabled && hintMap.isNotEmpty()) {
+            for (key in kb.keys) {
+                val code = key.codes.firstOrNull() ?: continue
+                val hint = hintMap[code] ?: continue
+                canvas.drawText(
+                    hint,
+                    (key.x + key.width - 6f * density),
+                    (key.y + 16f * density),
+                    hintPaint
+                )
+            }
         }
     }
 
@@ -72,6 +131,10 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 isSwiping = false
                 startX = me.x
                 accumulatedDeltaX = 0f
+
+                val key = keyAt(me.x, me.y)
+                pressedKeyCode = key?.codes?.firstOrNull()
+                invalidate()
 
                 if (!trackingSpaceKey) {
                     scheduleLongPressCheck(me.x, me.y)
@@ -100,6 +163,9 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 cancelLongPressCheck()
+                pressedKeyCode = null
+                invalidate()
+
                 if (trackingSpaceKey && isSwiping) {
                     trackingSpaceKey = false
                     isSwiping = false
