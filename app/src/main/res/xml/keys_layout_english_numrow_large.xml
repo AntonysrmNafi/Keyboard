@@ -53,9 +53,9 @@
     </Row>
     <Row>
         <Key android:codes="-20" android:keyLabel="\?123" android:keyWidth="13%p" />
-        <Key android:codes="-10" android:keyLabel="Aa/অ" android:keyWidth="12%p" />
-        <Key android:codes="32" android:keyLabel="space" android:keyWidth="36%p" />
+        <Key android:codes="-10" android:keyLabel="Aa/ржЕ" android:keyWidth="12%p" />
         <Key android:codes="44" android:keyLabel="," android:keyWidth="12%p" />
+        <Key android:codes="32" android:keyLabel="space" android:keyWidth="36%p" />
         <Key android:codes="46" android:keyLabel="." android:keyWidth="12%p" />
         <Key android:codes="-4" android:keyLabel="Go" android:keyWidth="15%p" />
     </Row>
