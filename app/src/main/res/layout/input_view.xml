@@ -23,84 +23,90 @@
             android:gravity="center"
             android:text="@string/icon_text_tool"
             android:textColor="@color/ime_key_function"
+            android:textStyle="bold"
             android:textSize="16sp" />
 
-        <TextView
-            android:id="@+id/icon_emoji_top"
+        <LinearLayout
+            android:id="@+id/toolbar_icons_group"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="@string/icon_emoji_top"
-            android:textColor="@color/ime_key_function"
-            android:textSize="16sp" />
+            android:layout_weight="5"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-        <TextView
-            android:id="@+id/clipboard_button"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="@string/icon_clipboard"
-            android:textColor="@color/ime_key_function"
-            android:textSize="16sp" />
+            <ImageView
+                android:id="@+id/icon_emoji_top"
+                android:layout_width="0dp"
+                android:layout_height="24dp"
+                android:layout_weight="1"
+                android:src="@drawable/ic_top_emoji"
+                android:scaleType="centerInside" />
 
-        <TextView
-            android:id="@+id/suggestion_1"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="2"
-            android:gravity="center"
-            android:textColor="@color/ime_suggestion_text"
-            android:textSize="16sp" />
+            <ImageView
+                android:id="@+id/clipboard_button"
+                android:layout_width="0dp"
+                android:layout_height="24dp"
+                android:layout_weight="1"
+                android:src="@drawable/ic_top_clipboard"
+                android:scaleType="centerInside" />
 
-        <TextView
-            android:id="@+id/suggestion_2"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="2"
-            android:gravity="center"
-            android:textColor="@color/ime_suggestion_text"
-            android:textSize="16sp" />
+            <TextView
+                android:id="@+id/icon_123_top"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/icon_123_top"
+                android:textColor="@color/ime_key_function"
+                android:textStyle="bold"
+                android:textSize="13sp" />
 
-        <TextView
-            android:id="@+id/suggestion_3"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="2"
-            android:gravity="center"
-            android:textColor="@color/ime_suggestion_text"
-            android:textSize="16sp" />
+            <TextView
+                android:id="@+id/icon_more_options"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/icon_more_options"
+                android:textColor="@color/ime_key_function"
+                android:textSize="16sp" />
+        </LinearLayout>
 
-        <TextView
-            android:id="@+id/icon_123_top"
+        <LinearLayout
+            android:id="@+id/suggestions_group"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="@string/icon_123_top"
-            android:textColor="@color/ime_key_function"
-            android:textSize="13sp" />
+            android:layout_weight="5"
+            android:orientation="horizontal"
+            android:visibility="gone">
 
-        <TextView
-            android:id="@+id/icon_more_options"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="@string/icon_more_options"
-            android:textColor="@color/ime_key_function"
-            android:textSize="16sp" />
+            <TextView
+                android:id="@+id/suggestion_1"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:textColor="@color/ime_suggestion_text"
+                android:textSize="16sp" />
 
-        <TextView
-            android:id="@+id/one_handed_button"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="@string/icon_one_handed"
-            android:textColor="@color/ime_key_function"
-            android:textSize="16sp" />
+            <TextView
+                android:id="@+id/suggestion_2"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:textColor="@color/ime_suggestion_text"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/suggestion_3"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:textColor="@color/ime_suggestion_text"
+                android:textSize="16sp" />
+        </LinearLayout>
     </LinearLayout>
 
     <FrameLayout
