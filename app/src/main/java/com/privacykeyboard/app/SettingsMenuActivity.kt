@@ -23,8 +23,8 @@ class SettingsMenuActivity : Activity() {
         container.addView(buildMenuRow("Preferences", "Typing behavior and keypress feedback") {
             openSection(SettingsItems.SECTION_PREFERENCES)
         })
-        container.addView(buildMenuRow("Appearance & Layouts", "Number row and layout options") {
-            openSection(SettingsItems.SECTION_APPEARANCE)
+        container.addView(buildMenuRow("Appearance & Layouts", "Number row, sizing, one-handed and more") {
+            startActivity(Intent(this, AppearanceSettingsActivity::class.java))
         })
         container.addView(buildMenuRow("Text correction", "Suggestions and word filtering") {
             openSection(SettingsItems.SECTION_TEXT_CORRECTION)
