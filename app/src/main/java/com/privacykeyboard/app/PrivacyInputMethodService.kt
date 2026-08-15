@@ -25,10 +25,16 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     private lateinit var keyboardView: BlockVeilKeyboardView
     private lateinit var suggestionStrip: LinearLayout
-    private lateinit var clipboardButton: TextView
-    private lateinit var oneHandedButton: TextView
+    private lateinit var textToolButton: TextView
+    private lateinit var toolbarIconsGroup: LinearLayout
+    private lateinit var suggestionsGroup: LinearLayout
+    private lateinit var clipboardButton: android.widget.ImageView
     private lateinit var clipboardPanel: LinearLayout
     private lateinit var clipboardList: LinearLayout
+
+    // When true, the icon toolbar stays visible even while a word is being composed
+    // (the user tapped the T button to peek at it). Resets on the next keystroke.
+    private var forceToolbar = false
 
     private lateinit var englishKeyboardPlain: Keyboard
     private lateinit var englishKeyboardWithNumRow: Keyboard
@@ -110,6 +116,14 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
 
         suggestionStrip = view.findViewById(R.id.suggestion_strip)
+        textToolButton = view.findViewById(R.id.icon_text_tool)
+        toolbarIconsGroup = view.findViewById(R.id.toolbar_icons_group)
+        suggestionsGroup = view.findViewById(R.id.suggestions_group)
+        textToolButton.setOnClickListener {
+            forceToolbar = true
+            updateTopStripVisibility()
+        }
+
         suggestion1 = view.findViewById(R.id.suggestion_1)
         suggestion2 = view.findViewById(R.id.suggestion_2)
         suggestion3 = view.findViewById(R.id.suggestion_3)
@@ -119,9 +133,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
         clipboardButton = view.findViewById(R.id.clipboard_button)
         clipboardButton.setOnClickListener { toggleClipboardPanel() }
-
-        oneHandedButton = view.findViewById(R.id.one_handed_button)
-        oneHandedButton.setOnClickListener { cycleOneHandedMode() }
 
         clipboardPanel = view.findViewById(R.id.clipboard_panel)
         clipboardList = view.findViewById(R.id.clipboard_list)
@@ -202,19 +213,13 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             } else 100
             keyboardView.pivotX = if (oneHandedMode == 2) keyboardView.width.toFloat() else 0f
             keyboardView.scaleX = widthPercent / 100f
-
-            oneHandedButton.text = when (oneHandedMode) {
-                1 -> "\u25C0"
-                2 -> "\u25B6"
-                else -> getString(R.string.icon_one_handed)
-            }
         }
     }
 
-    private fun cycleOneHandedMode() {
-        val current = SettingsStore.getInt(this, SettingsStore.KEY_ONE_HANDED_MODE, 0)
-        SettingsStore.setInt(this, SettingsStore.KEY_ONE_HANDED_MODE, (current + 1) % 3)
-        applySizingAndOneHanded()
+    private fun updateTopStripVisibility() {
+        val showToolbar = rawWordBuffer.isEmpty() || forceToolbar
+        toolbarIconsGroup.visibility = if (showToolbar) View.VISIBLE else View.GONE
+        suggestionsGroup.visibility = if (showToolbar) View.GONE else View.VISIBLE
     }
 
     private fun moveCursor(steps: Int) {
@@ -257,6 +262,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         rawWordBuffer.clear()
         committedWordLength = 0
         clearSuggestions()
+        forceToolbar = false
+        if (::toolbarIconsGroup.isInitialized) updateTopStripVisibility()
     }
 
     override fun onKey(primaryCode: Int, keyCodes: IntArray?) {
@@ -404,6 +411,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     }
 
     private fun appendToWord(ic: InputConnection, typedChar: Char) {
+        forceToolbar = false
         when (mode) {
             InputMode.ENGLISH, InputMode.BANGLA_TRADITIONAL -> {
                 ic.commitText(typedChar.toString(), 1)
@@ -421,6 +429,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             }
         }
         updateSuggestions()
+        updateTopStripVisibility()
     }
 
     private fun handleDelete(ic: InputConnection) {
@@ -446,6 +455,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             ic.deleteSurroundingText(1, 0)
             clearSuggestions()
         }
+        updateTopStripVisibility()
         lastCommittedWasSpace = false
     }
 
