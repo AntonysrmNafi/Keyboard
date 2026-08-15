@@ -11,11 +11,13 @@ import android.view.MotionEvent
 import kotlin.math.abs
 
 // Fully custom-drawn keyboard view so letter keys and function keys (shift,
-// backspace, enter, ?123, ABC, mode switch) can have different colors -
-// something the stock single keyBackground drawable can't do. Also adds two
-// gestures on top of the normal tap: horizontal drag on the spacebar moves the
-// text cursor, and long-press on a key with a registered "hint" inserts that
-// hint character (a lightweight number row on the top letter row).
+// backspace, enter, ?123, ABC) can have different colors - something the
+// stock single keyBackground drawable can't do. Also adds three gestures on
+// top of the normal tap:
+// 1. Horizontal drag on the spacebar moves the text cursor.
+// 2. Long-press on the spacebar (without dragging) switches the typing language.
+// 3. Long-press on a key with a registered "hint" inserts that hint character
+//    (a lightweight number row on the top letter row).
 class BlockVeilKeyboardView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -25,13 +27,16 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     // Pixels of drag needed per single cursor step. Smaller = faster/more sensitive.
     var pixelsPerCursorStep: Float = 60f
     var onCursorSwipe: ((steps: Int) -> Unit)? = null
+    var onSpaceLongPress: (() -> Unit)? = null
 
     var hintMap: Map<Int, String> = emptyMap()
     var hintsEnabled: Boolean = true
     var onHintLongPress: ((hint: String) -> Unit)? = null
 
     // Key codes rendered with the "function key" color instead of the letter color.
-    var functionKeyCodes: Set<Int> = setOf(-1, -5, -4, -10, -20, -21, -22, -24)
+    var functionKeyCodes: Set<Int> = setOf(-1, -5, -4, -20, -21, -22, -24, -30)
+    // Key codes whose label is a single icon glyph, drawn larger than multi-character labels.
+    var iconKeyCodes: Set<Int> = setOf(-1, -5, -4)
 
     private var trackingSpaceKey = false
     private var isSwiping = false
@@ -46,8 +51,11 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private var longPressStartX = 0f
     private var longPressStartY = 0f
 
+    private var spaceLongPressRunnable: Runnable? = null
+    private var spaceLongPressTriggered = false
+
     private val density = context.resources.displayMetrics.density
-    private val cornerRadius = 10f * density
+    private val cornerRadius = 8f * density
 
     private val letterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFA9E6C4.toInt() }
     private val letterPressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF8FD0AC.toInt() }
@@ -62,6 +70,10 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private val functionLabelPaint = Paint(letterLabelPaint).apply {
         color = 0xFFFFFFFF.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 13f
+    }
+    private val functionIconPaint = Paint(letterLabelPaint).apply {
+        color = 0xFFFFFFFF.toInt()
+        textSize = context.resources.displayMetrics.scaledDensity * 20f
     }
     private val spaceLabelPaint = Paint(letterLabelPaint).apply {
         color = 0xFF3A5F52.toInt()
@@ -102,6 +114,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             if (!label.isNullOrEmpty()) {
                 val labelPaint = when {
                     code == 32 -> spaceLabelPaint
+                    isFunction && iconKeyCodes.contains(code) -> functionIconPaint
                     isFunction -> functionLabelPaint
                     else -> letterLabelPaint
                 }
@@ -136,7 +149,9 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 pressedKeyCode = key?.codes?.firstOrNull()
                 invalidate()
 
-                if (!trackingSpaceKey) {
+                if (trackingSpaceKey) {
+                    scheduleSpaceLongPress()
+                } else {
                     scheduleLongPressCheck(me.x, me.y)
                 }
             }
@@ -145,6 +160,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                     val dx = me.x - startX
                     if (!isSwiping && abs(dx) > pixelsPerCursorStep / 2f) {
                         isSwiping = true
+                        cancelSpaceLongPress()
                     }
                     if (isSwiping) {
                         accumulatedDeltaX += (me.x - startX)
@@ -163,10 +179,17 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 cancelLongPressCheck()
+                cancelSpaceLongPress()
                 pressedKeyCode = null
                 invalidate()
 
                 if (trackingSpaceKey && isSwiping) {
+                    trackingSpaceKey = false
+                    isSwiping = false
+                    return true
+                }
+                if (spaceLongPressTriggered) {
+                    spaceLongPressTriggered = false
                     trackingSpaceKey = false
                     isSwiping = false
                     return true
@@ -183,6 +206,21 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         }
 
         return super.onTouchEvent(me)
+    }
+
+    private fun scheduleSpaceLongPress() {
+        spaceLongPressTriggered = false
+        val runnable = Runnable {
+            spaceLongPressTriggered = true
+            onSpaceLongPress?.invoke()
+        }
+        spaceLongPressRunnable = runnable
+        longPressHandler.postDelayed(runnable, 450)
+    }
+
+    private fun cancelSpaceLongPress() {
+        spaceLongPressRunnable?.let { longPressHandler.removeCallbacks(it) }
+        spaceLongPressRunnable = null
     }
 
     private fun scheduleLongPressCheck(x: Float, y: Float) {
