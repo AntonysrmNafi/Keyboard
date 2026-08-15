@@ -53,21 +53,6 @@ object SettingsItems {
         )
     )
 
-    val appearance = listOf(
-        ToggleItem(
-            SettingsStore.KEY_ENABLE_NUMBER_ROW,
-            "Enable number row",
-            "Adds a 0-9 row above the letters (English and Bangla phonetic modes)",
-            true
-        ),
-        ToggleItem(
-            SettingsStore.KEY_SPACE_CURSOR_ENABLED,
-            "Space cursor",
-            "Swipe left or right on the spacebar to move the text cursor",
-            true
-        )
-    )
-
     val textCorrection = listOf(
         ToggleItem(
             SettingsStore.KEY_SHOW_SUGGESTIONS,
@@ -84,7 +69,6 @@ object SettingsItems {
     )
 
     fun forSection(section: String): Pair<String, List<ToggleItem>> = when (section) {
-        SECTION_APPEARANCE -> "Appearance & Layouts" to appearance
         SECTION_TEXT_CORRECTION -> "Text correction" to textCorrection
         else -> "Preferences" to preferences
     }
