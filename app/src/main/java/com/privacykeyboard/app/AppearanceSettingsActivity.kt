@@ -103,7 +103,7 @@ class AppearanceSettingsActivity : Activity() {
                 intArrayOf(20, 30, 40, 50, 60, 70)
             )
         )
-        container.addView(buildNoteRow("Tap the one-hand icon above the keyboard to turn one-handed mode on and cycle left/right."))
+        container.addView(buildNoteRow("These widths are saved for later - the on-keyboard button to actually turn one-handed mode on isn't there yet."))
 
         container.addView(
             buildSwitchRow(
