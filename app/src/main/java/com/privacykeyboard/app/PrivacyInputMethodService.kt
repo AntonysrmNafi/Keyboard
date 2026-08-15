@@ -241,6 +241,14 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         val hideHints = SettingsStore.getBoolean(this, SettingsStore.KEY_HIDE_LONG_PRESS_HINTS, false)
         keyboardView.hintsEnabled = !hideHints && !useNumberRow && !showingSymbols && mode != InputMode.BANGLA_TRADITIONAL
 
+        val spaceLabel = when {
+            showingSymbols -> "space"
+            mode == InputMode.ENGLISH -> "English"
+            mode == InputMode.BANGLA_PHONETIC -> "বাংলা ফোনেটিক"
+            else -> "বাংলা"
+        }
+        keyboardView.keyboard?.keys?.firstOrNull { it.codes.firstOrNull() == 32 }?.label = spaceLabel
+
         keyboardView.invalidateAllKeys()
     }
 
@@ -508,7 +516,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         if (items.isEmpty()) {
             clipboardList.addView(TextView(this).apply {
                 text = getString(R.string.clipboard_empty)
-                setTextColor(resources.getColor(R.color.text_secondary))
+                setTextColor(resources.getColor(R.color.ime_text_secondary))
                 textSize = 13f
                 setPadding(dpPx(20), dpPx(12), dpPx(20), dpPx(12))
             })
@@ -518,7 +526,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         items.forEach { text ->
             clipboardList.addView(TextView(this).apply {
                 this.text = text
-                setTextColor(resources.getColor(R.color.text_primary))
+                setTextColor(resources.getColor(R.color.ime_text_primary))
                 textSize = 14f
                 maxLines = 2
                 ellipsize = TextUtils.TruncateAt.END
@@ -530,7 +538,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             })
             clipboardList.addView(View(this).apply {
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
-                setBackgroundColor(0x22FFFFFF)
+                setBackgroundColor(0x22000000)
             })
         }
     }
