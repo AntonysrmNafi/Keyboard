@@ -105,6 +105,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         keyboardView = view.findViewById(R.id.keyboard_view)
         keyboardView.setOnKeyboardActionListener(this)
         keyboardView.onCursorSwipe = { steps -> moveCursor(steps) }
+        keyboardView.onSpaceLongPress = { switchMode() }
         keyboardView.hintMap = topRowHints
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
 
@@ -270,6 +271,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
                 ic.performEditorAction(EditorInfo.IME_ACTION_DONE)
             }
             MODE_SWITCH_CODE -> switchMode()
+            EMOJI_PLACEHOLDER_CODE -> { /* Emoji panel not implemented yet - deliberately does nothing */ }
             SYMBOLS_TOGGLE_CODE -> {
                 showingSymbols = true
                 symbolsPageTwo = false
@@ -555,6 +557,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     companion object {
         const val MODE_SWITCH_CODE = -10
+        const val EMOJI_PLACEHOLDER_CODE = -30
         const val SYMBOLS_TOGGLE_CODE = -20
         const val SYMBOLS_MORE_CODE = -21
         const val ABC_RETURN_CODE = -22
