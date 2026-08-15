@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/keyboard_bg"
+    android:background="@color/ime_bg"
     android:paddingTop="6dp"
     android:paddingBottom="6dp">
 
@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="42dp"
         android:orientation="horizontal"
-        android:background="@color/keyboard_bg"
+        android:background="@color/ime_bg"
         android:gravity="center_vertical">
 
         <TextView
@@ -22,7 +22,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="@string/icon_clipboard"
-            android:textColor="@color/accent_mint"
+            android:textColor="@color/ime_key_function"
             android:textSize="18sp" />
 
         <TextView
@@ -31,7 +31,7 @@
             android:layout_height="match_parent"
             android:layout_weight="2"
             android:gravity="center"
-            android:textColor="@color/suggestion_text"
+            android:textColor="@color/ime_suggestion_text"
             android:textSize="16sp" />
 
         <TextView
@@ -40,7 +40,7 @@
             android:layout_height="match_parent"
             android:layout_weight="2"
             android:gravity="center"
-            android:textColor="@color/suggestion_text"
+            android:textColor="@color/ime_suggestion_text"
             android:textSize="16sp" />
 
         <TextView
@@ -49,7 +49,7 @@
             android:layout_height="match_parent"
             android:layout_weight="2"
             android:gravity="center"
-            android:textColor="@color/suggestion_text"
+            android:textColor="@color/ime_suggestion_text"
             android:textSize="16sp" />
 
         <TextView
@@ -59,7 +59,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="@string/icon_one_handed"
-            android:textColor="@color/accent_mint"
+            android:textColor="@color/ime_key_function"
             android:textSize="18sp" />
     </LinearLayout>
 
@@ -73,11 +73,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
             android:layout_marginEnd="6dp"
-            android:background="@color/keyboard_bg"
-            android:keyBackground="@drawable/key_background"
-            android:keyTextColor="@color/key_text"
-            android:keyTextSize="20sp"
-            android:labelTextSize="14sp"
+            android:background="@color/ime_bg"
             android:shadowColor="#00000000"
             android:shadowRadius="0" />
 
@@ -86,7 +82,7 @@
             android:layout_width="match_parent"
             android:layout_height="260dp"
             android:orientation="vertical"
-            android:background="@color/keyboard_bg"
+            android:background="@color/ime_bg"
             android:visibility="gone">
 
             <LinearLayout
@@ -101,7 +97,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/back_arrow"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@color/ime_text_primary"
                     android:textSize="20sp"
                     android:paddingEnd="12dp" />
 
@@ -110,7 +106,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/clipboard_title"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@color/ime_text_primary"
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
@@ -119,7 +115,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/clear_all"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="@color/ime_text_secondary"
                     android:textSize="13sp" />
             </LinearLayout>
 
