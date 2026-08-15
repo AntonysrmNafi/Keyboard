@@ -16,6 +16,26 @@
         android:gravity="center_vertical">
 
         <TextView
+            android:id="@+id/icon_text_tool"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/icon_text_tool"
+            android:textColor="@color/ime_key_function"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/icon_emoji_top"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/icon_emoji_top"
+            android:textColor="@color/ime_key_function"
+            android:textSize="16sp" />
+
+        <TextView
             android:id="@+id/clipboard_button"
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -23,7 +43,7 @@
             android:gravity="center"
             android:text="@string/icon_clipboard"
             android:textColor="@color/ime_key_function"
-            android:textSize="18sp" />
+            android:textSize="16sp" />
 
         <TextView
             android:id="@+id/suggestion_1"
@@ -53,6 +73,26 @@
             android:textSize="16sp" />
 
         <TextView
+            android:id="@+id/icon_123_top"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/icon_123_top"
+            android:textColor="@color/ime_key_function"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/icon_more_options"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/icon_more_options"
+            android:textColor="@color/ime_key_function"
+            android:textSize="16sp" />
+
+        <TextView
             android:id="@+id/one_handed_button"
             android:layout_width="0dp"
             android:layout_height="match_parent"
@@ -60,7 +100,7 @@
             android:gravity="center"
             android:text="@string/icon_one_handed"
             android:textColor="@color/ime_key_function"
-            android:textSize="18sp" />
+            android:textSize="16sp" />
     </LinearLayout>
 
     <FrameLayout
