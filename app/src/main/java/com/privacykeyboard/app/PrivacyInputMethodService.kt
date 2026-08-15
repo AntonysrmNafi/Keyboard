@@ -1,9 +1,12 @@
 package com.privacykeyboard.app
 
+import android.content.ClipboardManager
+import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
 import android.inputmethodservice.Keyboard
 import android.inputmethodservice.KeyboardView
 import android.media.AudioManager
+import android.text.TextUtils
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -14,16 +17,22 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 // Fully offline IME with English, Bangla phonetic and Bangla traditional modes,
-// plus a two-page symbols/numbers keyboard reached via the ?123 key.
-// Wired to user-configurable preferences from SettingsStore. No network permission,
-// no keystroke logging, no persistence of typed text.
+// a two-page symbols/numbers keyboard, an offline clipboard history panel, and
+// one-handed / resizing support. Wired to user-configurable preferences from
+// SettingsStore. No network permission, no keystroke logging, nothing persisted
+// beyond a small local clipboard history that never leaves the phone.
 class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardActionListener {
 
     private lateinit var keyboardView: BlockVeilKeyboardView
     private lateinit var suggestionStrip: LinearLayout
+    private lateinit var clipboardButton: TextView
+    private lateinit var oneHandedButton: TextView
+    private lateinit var clipboardPanel: LinearLayout
+    private lateinit var clipboardList: LinearLayout
 
     private lateinit var englishKeyboardPlain: Keyboard
     private lateinit var englishKeyboardWithNumRow: Keyboard
+    private lateinit var englishKeyboardWithNumRowLarge: Keyboard
     private lateinit var traditionalKeyboard: Keyboard
     private lateinit var symbolsKeyboard1: Keyboard
     private lateinit var symbolsKeyboard2: Keyboard
@@ -53,9 +62,34 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     private val offensiveWordsEn = setOf<String>()
     private val offensiveWordsBn = setOf<String>()
 
+    // Long-press hints on the top letter row (q..p -> 1..0), like a lightweight number row.
+    private val topRowHints = mapOf(
+        113 to "1", 119 to "2", 101 to "3", 114 to "4", 116 to "5",
+        121 to "6", 117 to "7", 105 to "8", 111 to "9", 112 to "0"
+    )
+
+    private var clipboardManager: ClipboardManager? = null
+    private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
+
     override fun onCreate() {
         super.onCreate()
         DictionaryProvider.load(this)
+
+        clipboardManager = getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager
+        val listener = ClipboardManager.OnPrimaryClipChangedListener {
+            val clip = clipboardManager?.primaryClip
+            if (clip != null && clip.itemCount > 0) {
+                val text = clip.getItemAt(0).coerceToText(this)?.toString()
+                if (!text.isNullOrBlank()) ClipboardStore.addItem(this, text)
+            }
+        }
+        clipboardListener = listener
+        clipboardManager?.addPrimaryClipChangedListener(listener)
+    }
+
+    override fun onDestroy() {
+        clipboardListener?.let { clipboardManager?.removePrimaryClipChangedListener(it) }
+        super.onDestroy()
     }
 
     override fun onCreateInputView(): View {
@@ -63,6 +97,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
         englishKeyboardPlain = Keyboard(this, R.xml.keys_layout_english)
         englishKeyboardWithNumRow = Keyboard(this, R.xml.keys_layout_english_numrow)
+        englishKeyboardWithNumRowLarge = Keyboard(this, R.xml.keys_layout_english_numrow_large)
         traditionalKeyboard = Keyboard(this, R.xml.keys_layout_bangla_traditional)
         symbolsKeyboard1 = Keyboard(this, R.xml.keys_layout_symbols1)
         symbolsKeyboard2 = Keyboard(this, R.xml.keys_layout_symbols2)
@@ -70,6 +105,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         keyboardView = view.findViewById(R.id.keyboard_view)
         keyboardView.setOnKeyboardActionListener(this)
         keyboardView.onCursorSwipe = { steps -> moveCursor(steps) }
+        keyboardView.hintMap = topRowHints
+        keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
 
         suggestionStrip = view.findViewById(R.id.suggestion_strip)
         suggestion1 = view.findViewById(R.id.suggestion_1)
@@ -77,6 +114,20 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         suggestion3 = view.findViewById(R.id.suggestion_3)
         listOf(suggestion1, suggestion2, suggestion3).forEach { tv ->
             tv.setOnClickListener { applySuggestion(tv.text.toString()) }
+        }
+
+        clipboardButton = view.findViewById(R.id.clipboard_button)
+        clipboardButton.setOnClickListener { toggleClipboardPanel() }
+
+        oneHandedButton = view.findViewById(R.id.one_handed_button)
+        oneHandedButton.setOnClickListener { cycleOneHandedMode() }
+
+        clipboardPanel = view.findViewById(R.id.clipboard_panel)
+        clipboardList = view.findViewById(R.id.clipboard_list)
+        view.findViewById<TextView>(R.id.clipboard_close_button).setOnClickListener { hideClipboardPanel() }
+        view.findViewById<TextView>(R.id.clipboard_clear_button).setOnClickListener {
+            ClipboardStore.clear(this)
+            refreshClipboardList()
         }
 
         return view
@@ -90,6 +141,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         lastCommittedWasSpace = false
         showingSymbols = false
         symbolsPageTwo = false
+        hideClipboardPanel()
         applySettings()
         applyKeyboardForMode()
     }
@@ -103,10 +155,65 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         val speedLevel = SettingsStore.getInt(this, SettingsStore.KEY_SPACE_CURSOR_SPEED, 1)
         val density = resources.displayMetrics.density
         keyboardView.pixelsPerCursorStep = when (speedLevel) {
-            0 -> 48f * density // Slow, needs more drag per step
-            2 -> 24f * density // Fast, needs less drag per step
-            else -> 36f * density // Default
+            0 -> 48f * density
+            2 -> 24f * density
+            else -> 36f * density
         }
+
+        applyEnterKeyLabel()
+        applySizingAndOneHanded()
+    }
+
+    private fun applyEnterKeyLabel() {
+        val forced = SettingsStore.getBoolean(this, SettingsStore.KEY_FORCED_ENTER_BUTTON, true)
+        val label = if (forced) "\u21B5" else "Go"
+        listOf(
+            englishKeyboardPlain, englishKeyboardWithNumRow, englishKeyboardWithNumRowLarge,
+            traditionalKeyboard, symbolsKeyboard1, symbolsKeyboard2
+        ).forEach { kb ->
+            kb.keys.firstOrNull { it.codes.isNotEmpty() && it.codes[0] == -4 }?.label = label
+        }
+        keyboardView.invalidateAllKeys()
+    }
+
+    private fun applySizingAndOneHanded() {
+        keyboardView.post {
+            val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+            val resizeEnabled = SettingsStore.getBoolean(this, SettingsStore.KEY_KEYBOARD_RESIZE_ENABLED, false)
+            val heightPercent = if (resizeEnabled) {
+                SettingsStore.getInt(
+                    this,
+                    if (landscape) SettingsStore.KEY_KEYBOARD_HEIGHT_LANDSCAPE else SettingsStore.KEY_KEYBOARD_HEIGHT_PORTRAIT,
+                    80
+                )
+            } else 100
+            keyboardView.pivotY = 0f
+            keyboardView.scaleY = heightPercent / 100f
+
+            val oneHandedMode = SettingsStore.getInt(this, SettingsStore.KEY_ONE_HANDED_MODE, 0)
+            val widthPercent = if (oneHandedMode != 0) {
+                SettingsStore.getInt(
+                    this,
+                    if (landscape) SettingsStore.KEY_ONE_HANDED_WIDTH_LANDSCAPE else SettingsStore.KEY_ONE_HANDED_WIDTH_PORTRAIT,
+                    if (landscape) 40 else 85
+                )
+            } else 100
+            keyboardView.pivotX = if (oneHandedMode == 2) keyboardView.width.toFloat() else 0f
+            keyboardView.scaleX = widthPercent / 100f
+
+            oneHandedButton.text = when (oneHandedMode) {
+                1 -> "\u25C0"
+                2 -> "\u25B6"
+                else -> getString(R.string.icon_one_handed)
+            }
+        }
+    }
+
+    private fun cycleOneHandedMode() {
+        val current = SettingsStore.getInt(this, SettingsStore.KEY_ONE_HANDED_MODE, 0)
+        SettingsStore.setInt(this, SettingsStore.KEY_ONE_HANDED_MODE, (current + 1) % 3)
+        applySizingAndOneHanded()
     }
 
     private fun moveCursor(steps: Int) {
@@ -120,13 +227,20 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     private fun applyKeyboardForMode() {
         val useNumberRow = SettingsStore.getBoolean(this, SettingsStore.KEY_ENABLE_NUMBER_ROW, true)
+        val useLarge = SettingsStore.getBoolean(this, SettingsStore.KEY_LARGE_NUMBER_ROW, false)
+
         keyboardView.keyboard = when {
             showingSymbols && symbolsPageTwo -> symbolsKeyboard2
             showingSymbols -> symbolsKeyboard1
             mode == InputMode.BANGLA_TRADITIONAL -> traditionalKeyboard
+            useNumberRow && useLarge -> englishKeyboardWithNumRowLarge
             useNumberRow -> englishKeyboardWithNumRow
             else -> englishKeyboardPlain
         }
+
+        val hideHints = SettingsStore.getBoolean(this, SettingsStore.KEY_HIDE_LONG_PRESS_HINTS, false)
+        keyboardView.hintsEnabled = !hideHints && !useNumberRow && !showingSymbols && mode != InputMode.BANGLA_TRADITIONAL
+
         keyboardView.invalidateAllKeys()
     }
 
@@ -172,11 +286,16 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         }
     }
 
+    private fun insertHintChar(hint: String) {
+        val ic = currentInputConnection ?: return
+        giveKeyFeedback()
+        ic.commitText(hint, 1)
+        lastCommittedWasSpace = false
+        capitalizeNext = false
+    }
+
     private fun giveKeyFeedback() {
         if (SettingsStore.getBoolean(this, SettingsStore.KEY_VIBRATE_ON_KEYPRESS, false)) {
-            // performHapticFeedback (with the ignore-global-setting flag) reliably triggers
-            // a short vibration for this specific press, even on phones where a raw
-            // Vibrator.vibrate() call gets silently swallowed by OEM battery/vibration policies.
             keyboardView.performHapticFeedback(
                 HapticFeedbackConstants.KEYBOARD_TAP,
                 HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
@@ -192,6 +311,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         isShifted = !isShifted
         englishKeyboardPlain.isShifted = isShifted
         englishKeyboardWithNumRow.isShifted = isShifted
+        englishKeyboardWithNumRowLarge.isShifted = isShifted
         keyboardView.invalidateAllKeys()
     }
 
@@ -200,6 +320,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         isShifted = false
         englishKeyboardPlain.isShifted = false
         englishKeyboardWithNumRow.isShifted = false
+        englishKeyboardWithNumRowLarge.isShifted = false
         resetWordState()
         applyKeyboardForMode()
     }
@@ -210,7 +331,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             typedChar = typedChar.uppercaseChar()
         }
 
-        // Auto-capitalization: force the first letter of a new sentence to uppercase
         val autoCap = SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)
         if (!showingSymbols && autoCap && capitalizeNext && mode == InputMode.ENGLISH && typedChar.isLetter()) {
             typedChar = typedChar.uppercaseChar()
@@ -226,7 +346,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             if (autoCap) capitalizeNext = true
             lastCommittedWasSpace = false
         } else if (showingSymbols) {
-            // Symbols/numbers are committed directly, no word buffering or suggestions.
             ic.commitText(typedChar.toString(), 1)
             lastCommittedWasSpace = false
         } else {
@@ -238,6 +357,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             isShifted = false
             englishKeyboardPlain.isShifted = false
             englishKeyboardWithNumRow.isShifted = false
+            englishKeyboardWithNumRowLarge.isShifted = false
             keyboardView.invalidateAllKeys()
         }
     }
@@ -253,7 +373,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         val doubleSpacePeriod = SettingsStore.getBoolean(this, SettingsStore.KEY_DOUBLE_SPACE_PERIOD, true)
 
         if (doubleSpaceTab && lastCommittedWasSpace && rawWordBuffer.isEmpty()) {
-            // Replace the previous lone space with a tab character
             ic.deleteSurroundingText(1, 0)
             ic.commitText("\t", 1)
             lastCommittedWasSpace = false
@@ -262,7 +381,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         }
 
         if (!doubleSpaceTab && doubleSpacePeriod && lastCommittedWasSpace && rawWordBuffer.isEmpty()) {
-            // Replace the previous lone space with ". "
             ic.deleteSurroundingText(1, 0)
             ic.commitText(". ", 1)
             capitalizeNext = SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)
@@ -283,7 +401,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
                 committedWordLength = rawWordBuffer.length
             }
             InputMode.BANGLA_PHONETIC -> {
-                // Comma is a hasant trigger inside the buffer, not committed on its own.
                 rawWordBuffer.append(typedChar)
                 val newText = PhoneticEngine.transliterate(rawWordBuffer.toString())
                 if (committedWordLength > 0) {
@@ -367,6 +484,58 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         suggestion2.text = ""
         suggestion3.text = ""
     }
+
+    private fun toggleClipboardPanel() {
+        if (clipboardPanel.visibility == View.VISIBLE) hideClipboardPanel() else showClipboardPanel()
+    }
+
+    private fun showClipboardPanel() {
+        refreshClipboardList()
+        clipboardPanel.visibility = View.VISIBLE
+        keyboardView.visibility = View.INVISIBLE
+    }
+
+    private fun hideClipboardPanel() {
+        if (!::clipboardPanel.isInitialized) return
+        clipboardPanel.visibility = View.GONE
+        keyboardView.visibility = View.VISIBLE
+    }
+
+    private fun refreshClipboardList() {
+        clipboardList.removeAllViews()
+        val items = ClipboardStore.getItems(this)
+
+        if (items.isEmpty()) {
+            clipboardList.addView(TextView(this).apply {
+                text = getString(R.string.clipboard_empty)
+                setTextColor(resources.getColor(R.color.text_secondary))
+                textSize = 13f
+                setPadding(dpPx(20), dpPx(12), dpPx(20), dpPx(12))
+            })
+            return
+        }
+
+        items.forEach { text ->
+            clipboardList.addView(TextView(this).apply {
+                this.text = text
+                setTextColor(resources.getColor(R.color.text_primary))
+                textSize = 14f
+                maxLines = 2
+                ellipsize = TextUtils.TruncateAt.END
+                setPadding(dpPx(20), dpPx(12), dpPx(20), dpPx(12))
+                setOnClickListener {
+                    currentInputConnection?.commitText(text, 1)
+                    hideClipboardPanel()
+                }
+            })
+            clipboardList.addView(View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
+                setBackgroundColor(0x22FFFFFF)
+            })
+        }
+    }
+
+    private fun dpPx(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     override fun onPress(primaryCode: Int) {}
     override fun onRelease(primaryCode: Int) {}
