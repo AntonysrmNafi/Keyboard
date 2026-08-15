@@ -3,7 +3,7 @@
     android:keyWidth="10%p"
     android:keyHeight="50dp"
     android:horizontalGap="2%p"
-    android:verticalGap="8dp">
+    android:verticalGap="6dp">
 
     <Row>
         <Key android:codes="113" android:keyLabel="q" />
@@ -29,7 +29,7 @@
         <Key android:codes="108" android:keyLabel="l" />
     </Row>
     <Row>
-        <Key android:codes="-1" android:keyLabel="Shift" android:keyWidth="15%p" android:isModifier="true" android:isSticky="true" />
+        <Key android:codes="-1" android:keyLabel="&#8679;" android:keyWidth="15%p" android:isModifier="true" android:isSticky="true" />
         <Key android:codes="122" android:keyLabel="z" />
         <Key android:codes="120" android:keyLabel="x" />
         <Key android:codes="99" android:keyLabel="c" />
@@ -37,11 +37,11 @@
         <Key android:codes="98" android:keyLabel="b" />
         <Key android:codes="110" android:keyLabel="n" />
         <Key android:codes="109" android:keyLabel="m" />
-        <Key android:codes="-5" android:keyLabel="Del" android:keyWidth="15%p" />
+        <Key android:codes="-5" android:keyLabel="&#9003;" android:keyWidth="15%p" />
     </Row>
     <Row>
         <Key android:codes="-20" android:keyLabel="\?123" android:keyWidth="13%p" />
-        <Key android:codes="-10" android:keyLabel="Aa/ржЕ" android:keyWidth="12%p" />
+        <Key android:codes="-30" android:keyLabel="&#128522;" android:keyWidth="12%p" />
         <Key android:codes="44" android:keyLabel="," android:keyWidth="12%p" />
         <Key android:codes="32" android:keyLabel="space" android:keyWidth="36%p" />
         <Key android:codes="46" android:keyLabel="." android:keyWidth="12%p" />
