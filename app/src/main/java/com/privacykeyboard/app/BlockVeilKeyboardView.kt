@@ -76,6 +76,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         color = 0xFF0D1F1A.toInt()
         textAlign = Paint.Align.CENTER
         textSize = context.resources.displayMetrics.scaledDensity * 18f
+        isFakeBoldText = true
     }
     private val functionLabelPaint = Paint(letterLabelPaint).apply {
         color = 0xFFFFFFFF.toInt()
@@ -89,7 +90,9 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         color = 0xFF3A5F52.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 13f
     }
-    private val shiftActiveIconPaint = Paint(letterLabelPaint).apply {
+    // Shift key icon when NOT active: dark icon on the normal mint key color, matching
+    // the reference app's resting look (shift isn't treated as a "function" key at rest).
+    private val shiftRestIconPaint = Paint(letterLabelPaint).apply {
         color = 0xFF0D1F1A.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 20f
     }
@@ -107,13 +110,17 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
         for (key in kb.keys) {
             val code = key.codes.firstOrNull() ?: 0
+            if (code == SPACER_KEY_CODE) continue
+
             val isShiftKey = code == -1
             val isFunction = functionKeyCodes.contains(code)
             val pressed = pressedKeyCode == code
 
             val bgPaint = when {
-                isShiftKey && shiftActive && pressed -> letterPressedPaint
-                isShiftKey && shiftActive -> letterPaint
+                isShiftKey && shiftActive && pressed -> functionPressedPaint
+                isShiftKey && shiftActive -> functionPaint
+                isShiftKey && pressed -> letterPressedPaint
+                isShiftKey -> letterPaint
                 isFunction && pressed -> functionPressedPaint
                 isFunction -> functionPaint
                 pressed -> letterPressedPaint
@@ -144,7 +151,8 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 val label = if (shiftActive && isSingleLetter) rawLabel.uppercase() else rawLabel
 
                 val labelPaint = when {
-                    isShiftKey && shiftActive -> shiftActiveIconPaint
+                    isShiftKey && shiftActive -> functionIconPaint
+                    isShiftKey -> shiftRestIconPaint
                     code == 32 -> spaceLabelPaint
                     isFunction && iconKeyCodes.contains(code) -> functionIconPaint
                     isFunction -> functionLabelPaint
@@ -158,6 +166,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         if (hintsEnabled && hintMap.isNotEmpty()) {
             for (key in kb.keys) {
                 val code = key.codes.firstOrNull() ?: continue
+                if (code == SPACER_KEY_CODE) continue
                 val hint = hintMap[code] ?: continue
                 canvas.drawText(
                     hint,
@@ -285,12 +294,17 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
     private fun keyAt(x: Float, y: Float): Keyboard.Key? =
         keyboard?.keys?.firstOrNull {
-            x >= it.x && x <= it.x + it.width && y >= it.y && y <= it.y + it.height
+            it.codes.firstOrNull() != SPACER_KEY_CODE &&
+                x >= it.x && x <= it.x + it.width && y >= it.y && y <= it.y + it.height
         }
 
     private fun isOnSpaceKey(x: Float, y: Float): Boolean {
         val spaceKey = keyboard?.keys?.firstOrNull { it.codes.isNotEmpty() && it.codes[0] == 32 } ?: return false
         return x >= spaceKey.x && x <= spaceKey.x + spaceKey.width &&
             y >= spaceKey.y && y <= spaceKey.y + spaceKey.height
+    }
+
+    companion object {
+        const val SPACER_KEY_CODE = -99
     }
 }
