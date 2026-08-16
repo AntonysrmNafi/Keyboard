@@ -15,16 +15,13 @@
         android:background="@color/ime_bg"
         android:gravity="center_vertical">
 
-        <TextView
+        <ImageView
             android:id="@+id/icon_text_tool"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="24dp"
             android:layout_weight="1"
-            android:gravity="center"
-            android:text="@string/icon_text_tool"
-            android:textColor="@color/ime_key_function"
-            android:textStyle="bold"
-            android:textSize="16sp" />
+            android:src="@drawable/ic_top_text_tools"
+            android:scaleType="centerInside" />
 
         <LinearLayout
             android:id="@+id/toolbar_icons_group"
@@ -117,8 +114,6 @@
             android:id="@+id/keyboard_view"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:layout_marginEnd="6dp"
             android:background="@color/ime_bg"
             android:shadowColor="#00000000"
             android:shadowRadius="0" />
