@@ -72,11 +72,13 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private val functionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1B4D3E.toInt() }
     private val functionPressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF123A2E.toInt() }
 
+    private val boldTypeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+
     private val letterLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xFF0D1F1A.toInt()
         textAlign = Paint.Align.CENTER
         textSize = context.resources.displayMetrics.scaledDensity * 18f
-        isFakeBoldText = true
+        typeface = boldTypeface
     }
     private val functionLabelPaint = Paint(letterLabelPaint).apply {
         color = 0xFFFFFFFF.toInt()
@@ -104,7 +106,24 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
     private val rect = RectF()
 
+    init {
+        // The stock preview popup relies on internal state tied to the base
+        // class's own onDraw/buffer lifecycle, which we bypass by fully
+        // custom-drawing the keyboard. Forcing it off avoids a mismatch that
+        // was reproducibly crashing the keyboard when the sticky Shift key
+        // (isSticky="true") was tapped.
+        isPreviewEnabled = false
+    }
+
     override fun onDraw(canvas: Canvas) {
+        try {
+            drawKeyboard(canvas)
+        } catch (t: Throwable) {
+            android.util.Log.e("BlockVeilKeyboardView", "onDraw failed, skipping this frame", t)
+        }
+    }
+
+    private fun drawKeyboard(canvas: Canvas) {
         val kb = keyboard ?: return
         val shiftActive = kb.isShifted
 
