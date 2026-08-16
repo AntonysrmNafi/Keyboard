@@ -57,6 +57,11 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     private var symbolsPageTwo = false
     // Calculator-style numpad, opened from the top-bar 123 icon.
     private var showingNumpad = false
+    private var numpadBangla = false
+    private val latinToBanglaDigit = mapOf(
+        '0' to '\u09E6', '1' to '\u09E7', '2' to '\u09E8', '3' to '\u09E9', '4' to '\u09EA',
+        '5' to '\u09EB', '6' to '\u09EC', '7' to '\u09ED', '8' to '\u09EE', '9' to '\u09EF'
+    )
 
     // Raw keys typed for the current word, drives phonetic conversion and suggestions
     private val rawWordBuffer = StringBuilder()
@@ -151,6 +156,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         view.findViewById<TextView>(R.id.icon_123_top).setOnClickListener {
             showingNumpad = true
             showingSymbols = false
+            numpadBangla = false
+            updateNumpadDigitLabels()
             resetWordState()
             applyKeyboardForMode()
         }
@@ -175,6 +182,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         showingSymbols = false
         symbolsPageTwo = false
         showingNumpad = false
+        numpadBangla = false
+        updateNumpadDigitLabels()
         hideClipboardPanel()
         applySettings()
         applyKeyboardForMode()
@@ -324,6 +333,18 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
                 resetWordState()
                 applyKeyboardForMode()
             }
+            NUMPAD_ABC_CODE -> {
+                showingNumpad = false
+                mode = InputMode.ENGLISH
+                isShifted = false
+                resetWordState()
+                applyKeyboardForMode()
+            }
+            NUMPAD_BANGLA_TOGGLE_CODE -> {
+                numpadBangla = !numpadBangla
+                updateNumpadDigitLabels()
+                keyboardView.invalidateAllKeys()
+            }
             else -> handleCharacter(ic, primaryCode)
         }
     }
@@ -389,12 +410,14 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     private fun handleCharacter(ic: InputConnection, primaryCode: Int) {
         var typedChar = primaryCode.toChar()
-        if (isShifted && mode != InputMode.BANGLA_TRADITIONAL && !showingSymbols) {
+        val directCommitMode = showingSymbols || showingNumpad
+
+        if (isShifted && mode != InputMode.BANGLA_TRADITIONAL && !directCommitMode) {
             typedChar = typedChar.uppercaseChar()
         }
 
         val autoCap = SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)
-        if (!showingSymbols && autoCap && capitalizeNext && mode == InputMode.ENGLISH && typedChar.isLetter()) {
+        if (!directCommitMode && autoCap && capitalizeNext && mode == InputMode.ENGLISH && typedChar.isLetter()) {
             typedChar = typedChar.uppercaseChar()
             capitalizeNext = false
         } else if (typedChar.isLetter()) {
@@ -403,11 +426,14 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
         if (typedChar == ' ') {
             handleSpace(ic)
-        } else if (typedChar == '.' && !showingSymbols) {
+        } else if (typedChar == '.' && !directCommitMode) {
             commitWordBoundary(ic, ".")
             if (autoCap) capitalizeNext = true
             lastCommittedWasSpace = false
-        } else if (showingSymbols) {
+        } else if (showingNumpad && numpadBangla && typedChar in latinToBanglaDigit.keys) {
+            ic.commitText(latinToBanglaDigit[typedChar].toString(), 1)
+            lastCommittedWasSpace = false
+        } else if (directCommitMode) {
             ic.commitText(typedChar.toString(), 1)
             lastCommittedWasSpace = false
         } else {
@@ -421,6 +447,17 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             englishKeyboardWithNumRow.isShifted = false
             englishKeyboardWithNumRowLarge.isShifted = false
             keyboardView.invalidateAllKeys()
+        }
+    }
+
+    private fun updateNumpadDigitLabels() {
+        if (!::numpadKeyboard.isInitialized) return
+        numpadKeyboard.keys.forEach { key ->
+            val code = key.codes.firstOrNull() ?: return@forEach
+            if (code in 48..57) {
+                val latinDigit = code.toChar()
+                key.label = if (numpadBangla) latinToBanglaDigit[latinDigit].toString() else latinDigit.toString()
+            }
         }
     }
 
@@ -478,7 +515,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     }
 
     private fun handleDelete(ic: InputConnection) {
-        if (showingSymbols) {
+        if (showingSymbols || showingNumpad) {
             ic.deleteSurroundingText(1, 0)
             return
         }
@@ -617,6 +654,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         const val SYMBOLS_MORE_CODE = -21
         const val ABC_RETURN_CODE = -22
         const val SYMBOLS_LESS_CODE = -24
+        const val NUMPAD_ABC_CODE = -25
+        const val NUMPAD_BANGLA_TOGGLE_CODE = -26
         const val COPY_KEY_CODE = 99 // 'c'
         const val CUT_KEY_CODE = 120 // 'x'
         const val PASTE_KEY_CODE = 118 // 'v'
