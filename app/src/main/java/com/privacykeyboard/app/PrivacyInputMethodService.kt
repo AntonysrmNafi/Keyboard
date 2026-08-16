@@ -42,6 +42,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     private lateinit var traditionalKeyboard: Keyboard
     private lateinit var symbolsKeyboard1: Keyboard
     private lateinit var symbolsKeyboard2: Keyboard
+    private lateinit var numpadKeyboard: Keyboard
 
     private lateinit var suggestion1: TextView
     private lateinit var suggestion2: TextView
@@ -54,6 +55,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     // exactly like Gboard: pressing ABC returns to whichever letter mode was active.
     private var showingSymbols = false
     private var symbolsPageTwo = false
+    // Calculator-style numpad, opened from the top-bar 123 icon.
+    private var showingNumpad = false
 
     // Raw keys typed for the current word, drives phonetic conversion and suggestions
     private val rawWordBuffer = StringBuilder()
@@ -107,6 +110,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         traditionalKeyboard = Keyboard(this, R.xml.keys_layout_bangla_traditional)
         symbolsKeyboard1 = Keyboard(this, R.xml.keys_layout_symbols1)
         symbolsKeyboard2 = Keyboard(this, R.xml.keys_layout_symbols2)
+        numpadKeyboard = Keyboard(this, R.xml.keys_layout_numpad)
 
         keyboardView = view.findViewById(R.id.keyboard_view)
         keyboardView.setOnKeyboardActionListener(this)
@@ -118,7 +122,11 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         keyboardView.onActionLongPress = { code -> handleClipboardAction(code) }
         getDrawable(R.drawable.sentiment_satisfied_24)?.mutate()?.let { drawable ->
             drawable.setTint(android.graphics.Color.WHITE)
-            keyboardView.iconDrawables = mapOf(EMOJI_PLACEHOLDER_CODE to drawable)
+            val enterDrawable = getDrawable(R.drawable.ic_enter)
+            keyboardView.iconDrawables = buildMap {
+                put(EMOJI_PLACEHOLDER_CODE, drawable)
+                if (enterDrawable != null) put(-4, enterDrawable)
+            }
         }
 
         suggestionStrip = view.findViewById(R.id.suggestion_strip)
@@ -140,6 +148,13 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         clipboardButton = view.findViewById(R.id.clipboard_button)
         clipboardButton.setOnClickListener { toggleClipboardPanel() }
 
+        view.findViewById<TextView>(R.id.icon_123_top).setOnClickListener {
+            showingNumpad = true
+            showingSymbols = false
+            resetWordState()
+            applyKeyboardForMode()
+        }
+
         clipboardPanel = view.findViewById(R.id.clipboard_panel)
         clipboardList = view.findViewById(R.id.clipboard_list)
         view.findViewById<TextView>(R.id.clipboard_close_button).setOnClickListener { hideClipboardPanel() }
@@ -159,13 +174,16 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         lastCommittedWasSpace = false
         showingSymbols = false
         symbolsPageTwo = false
+        showingNumpad = false
         hideClipboardPanel()
         applySettings()
         applyKeyboardForMode()
     }
 
     private fun applySettings() {
-        keyboardView.isPreviewEnabled = SettingsStore.getBoolean(this, SettingsStore.KEY_POPUP_ON_KEYPRESS, true)
+        // isPreviewEnabled is force-disabled inside BlockVeilKeyboardView itself (crash safety,
+        // see its init block). Our own pressed-key highlight color already gives feedback,
+        // so the "Popup on keypress" setting no longer needs to toggle the stock popup.
         val showSuggestions = SettingsStore.getBoolean(this, SettingsStore.KEY_SHOW_SUGGESTIONS, true)
         suggestionStrip.visibility = if (showSuggestions) View.VISIBLE else View.GONE
 
@@ -178,21 +196,11 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             else -> 36f * density
         }
 
-        applyEnterKeyLabel()
         applySizingAndOneHanded()
     }
 
-    private fun applyEnterKeyLabel() {
-        val forced = SettingsStore.getBoolean(this, SettingsStore.KEY_FORCED_ENTER_BUTTON, true)
-        val label = if (forced) "\u21B5" else "Go"
-        listOf(
-            englishKeyboardPlain, englishKeyboardWithNumRow, englishKeyboardWithNumRowLarge,
-            traditionalKeyboard, symbolsKeyboard1, symbolsKeyboard2
-        ).forEach { kb ->
-            kb.keys.firstOrNull { it.codes.isNotEmpty() && it.codes[0] == -4 }?.label = label
-        }
-        keyboardView.invalidateAllKeys()
-    }
+    // Enter key always shows the ic_enter icon now (set in onCreateInputView),
+    // matching the reference app's style, so no per-setting label switch is needed here.
 
     private fun applySizingAndOneHanded() {
         keyboardView.post {
@@ -242,6 +250,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         val useLarge = SettingsStore.getBoolean(this, SettingsStore.KEY_LARGE_NUMBER_ROW, false)
 
         keyboardView.keyboard = when {
+            showingNumpad -> numpadKeyboard
             showingSymbols && symbolsPageTwo -> symbolsKeyboard2
             showingSymbols -> symbolsKeyboard1
             mode == InputMode.BANGLA_TRADITIONAL -> traditionalKeyboard
@@ -251,7 +260,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         }
 
         val hideHints = SettingsStore.getBoolean(this, SettingsStore.KEY_HIDE_LONG_PRESS_HINTS, false)
-        keyboardView.hintsEnabled = !hideHints && !useNumberRow && !showingSymbols && mode != InputMode.BANGLA_TRADITIONAL
+        keyboardView.hintsEnabled = !hideHints && !useNumberRow && !showingSymbols && !showingNumpad && mode != InputMode.BANGLA_TRADITIONAL
 
         val spaceLabel = when {
             showingSymbols -> "space"
@@ -273,6 +282,14 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     }
 
     override fun onKey(primaryCode: Int, keyCodes: IntArray?) {
+        try {
+            dispatchKey(primaryCode)
+        } catch (t: Throwable) {
+            android.util.Log.e("PrivacyIME", "onKey($primaryCode) failed", t)
+        }
+    }
+
+    private fun dispatchKey(primaryCode: Int) {
         val ic = currentInputConnection ?: return
         giveKeyFeedback()
 
@@ -303,6 +320,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             ABC_RETURN_CODE -> {
                 showingSymbols = false
                 symbolsPageTwo = false
+                showingNumpad = false
                 resetWordState()
                 applyKeyboardForMode()
             }
