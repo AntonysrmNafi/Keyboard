@@ -25,7 +25,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     private lateinit var keyboardView: BlockVeilKeyboardView
     private lateinit var suggestionStrip: LinearLayout
-    private lateinit var textToolButton: TextView
+    private lateinit var textToolButton: android.widget.ImageView
     private lateinit var toolbarIconsGroup: LinearLayout
     private lateinit var suggestionsGroup: LinearLayout
     private lateinit var clipboardButton: android.widget.ImageView
@@ -114,6 +114,11 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         keyboardView.onSpaceLongPress = { switchMode() }
         keyboardView.hintMap = topRowHints
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
+        keyboardView.actionLongPressCodes = setOf(COPY_KEY_CODE, CUT_KEY_CODE, PASTE_KEY_CODE)
+        keyboardView.onActionLongPress = { code -> handleClipboardAction(code) }
+        getDrawable(R.drawable.ic_emoji_white)?.let { drawable ->
+            keyboardView.iconDrawables = mapOf(EMOJI_PLACEHOLDER_CODE to drawable)
+        }
 
         suggestionStrip = view.findViewById(R.id.suggestion_strip)
         textToolButton = view.findViewById(R.id.icon_text_tool)
@@ -249,9 +254,9 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
         val spaceLabel = when {
             showingSymbols -> "space"
-            mode == InputMode.ENGLISH -> "English"
-            mode == InputMode.BANGLA_PHONETIC -> "বাংলা ফোনেটিক"
-            else -> "বাংলা"
+            mode == InputMode.ENGLISH -> "\u25C0 English \u25B6"
+            mode == InputMode.BANGLA_PHONETIC -> "\u25C0 বাংলা ফোনেটিক \u25B6"
+            else -> "\u25C0 বাংলা \u25B6"
         }
         keyboardView.keyboard?.keys?.firstOrNull { it.codes.firstOrNull() == 32 }?.label = spaceLabel
 
@@ -309,6 +314,26 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         ic.commitText(hint, 1)
         lastCommittedWasSpace = false
         capitalizeNext = false
+    }
+
+    private fun handleClipboardAction(code: Int) {
+        val ic = currentInputConnection ?: return
+        giveKeyFeedback()
+        when (code) {
+            COPY_KEY_CODE -> {
+                ic.performContextMenuAction(android.R.id.selectAll)
+                ic.performContextMenuAction(android.R.id.copy)
+            }
+            CUT_KEY_CODE -> {
+                ic.performContextMenuAction(android.R.id.selectAll)
+                ic.performContextMenuAction(android.R.id.cut)
+                resetWordState()
+            }
+            PASTE_KEY_CODE -> {
+                ic.performContextMenuAction(android.R.id.paste)
+                resetWordState()
+            }
+        }
     }
 
     private fun giveKeyFeedback() {
@@ -572,5 +597,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         const val SYMBOLS_MORE_CODE = -21
         const val ABC_RETURN_CODE = -22
         const val SYMBOLS_LESS_CODE = -24
+        const val COPY_KEY_CODE = 99 // 'c'
+        const val CUT_KEY_CODE = 120 // 'x'
+        const val PASTE_KEY_CODE = 118 // 'v'
     }
 }
