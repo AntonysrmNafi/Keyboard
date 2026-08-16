@@ -153,6 +153,12 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         clipboardButton = view.findViewById(R.id.clipboard_button)
         clipboardButton.setOnClickListener { toggleClipboardPanel() }
 
+        view.findViewById<android.widget.ImageView>(R.id.settings_header_button).setOnClickListener {
+            val intent = android.content.Intent(this, MainActivity::class.java)
+            intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(intent)
+        }
+
         view.findViewById<TextView>(R.id.icon_123_top).setOnClickListener {
             showingNumpad = true
             showingSymbols = false
