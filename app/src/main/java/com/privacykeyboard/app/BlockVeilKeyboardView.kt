@@ -16,7 +16,14 @@ import kotlin.math.abs
 // show an active/highlighted state, and letter keys preview uppercase while
 // shifted - none of which the stock single keyBackground drawable can do.
 //
-// Gestures on top of the normal tap:
+// Touch handling is also fully custom (never delegates to the stock
+// KeyboardView.onTouchEvent). The stock implementation has internal state tied
+// to sticky/modifier keys (used by our Shift key) that reproducibly crashed
+// the keyboard once we started fully overriding onDraw, so we detect keys,
+// long-presses, and the spacebar gestures ourselves and dispatch straight to
+// the OnKeyboardActionListener.
+//
+// Gestures:
 // 1. Horizontal drag on the spacebar moves the text cursor.
 // 2. Long-press on the spacebar (without dragging) switches the typing language.
 // 3. Long-press on a key with a registered "hint" inserts that hint character
@@ -48,12 +55,21 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     // Key codes drawn with an icon Drawable instead of a text label.
     var iconDrawables: Map<Int, Drawable> = emptyMap()
 
+    // Our own listener reference. We deliberately do NOT forward to the base
+    // class's setOnKeyboardActionListener/onTouchEvent - see class doc above.
+    private var keyListener: OnKeyboardActionListener? = null
+
+    override fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
+        keyListener = listener
+    }
+
     private var trackingSpaceKey = false
     private var isSwiping = false
     private var startX = 0f
     private var accumulatedDeltaX = 0f
 
     private var pressedKeyCode: Int? = null
+    private var downKeyCode: Int? = null
 
     private val longPressHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var longPressRunnable: Runnable? = null
@@ -92,8 +108,6 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         color = 0xFF3A5F52.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 13f
     }
-    // Shift key icon when NOT active: dark icon on the normal mint key color, matching
-    // the reference app's resting look (shift isn't treated as a "function" key at rest).
     private val shiftRestIconPaint = Paint(letterLabelPaint).apply {
         color = 0xFF0D1F1A.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 20f
@@ -107,11 +121,6 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private val rect = RectF()
 
     init {
-        // The stock preview popup relies on internal state tied to the base
-        // class's own onDraw/buffer lifecycle, which we bypass by fully
-        // custom-drawing the keyboard. Forcing it off avoids a mismatch that
-        // was reproducibly crashing the keyboard when the sticky Shift key
-        // (isSticky="true") was tapped.
         isPreviewEnabled = false
     }
 
@@ -198,6 +207,19 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(me: MotionEvent): Boolean {
+        try {
+            handleTouch(me)
+        } catch (t: Throwable) {
+            android.util.Log.e("BlockVeilKeyboardView", "onTouchEvent failed", t)
+            pressedKeyCode = null
+            downKeyCode = null
+            trackingSpaceKey = false
+            isSwiping = false
+        }
+        return true
+    }
+
+    private fun handleTouch(me: MotionEvent) {
         when (me.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 trackingSpaceKey = spaceCursorEnabled && isOnSpaceKey(me.x, me.y)
@@ -206,8 +228,12 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 accumulatedDeltaX = 0f
 
                 val key = keyAt(me.x, me.y)
-                pressedKeyCode = key?.codes?.firstOrNull()
+                val code = key?.codes?.firstOrNull()
+                pressedKeyCode = code
+                downKeyCode = code
                 invalidate()
+
+                code?.let { keyListener?.onPress(it) }
 
                 if (trackingSpaceKey) {
                     scheduleSpaceLongPress()
@@ -230,11 +256,22 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                             onCursorSwipe?.invoke(steps)
                             accumulatedDeltaX -= steps * pixelsPerCursorStep
                         }
-                        return true
                     }
                 } else if (longPressRunnable != null) {
                     val moved = abs(me.x - longPressStartX) + abs(me.y - longPressStartY)
                     if (moved > 24f) cancelLongPressCheck()
+                }
+
+                // If the finger has moved off the originally-pressed key, cancel the
+                // press highlight (standard "drag off to cancel" behavior).
+                if (!trackingSpaceKey && downKeyCode != null) {
+                    val currentKey = keyAt(me.x, me.y)
+                    val stillOnSameKey = currentKey?.codes?.firstOrNull() == downKeyCode
+                    val newPressed = if (stillOnSameKey) downKeyCode else null
+                    if (pressedKeyCode != newPressed) {
+                        pressedKeyCode = newPressed
+                        invalidate()
+                    }
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
@@ -243,29 +280,30 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 pressedKeyCode = null
                 invalidate()
 
-                if (trackingSpaceKey && isSwiping) {
-                    trackingSpaceKey = false
-                    isSwiping = false
-                    return true
-                }
-                if (spaceLongPressTriggered) {
-                    spaceLongPressTriggered = false
-                    trackingSpaceKey = false
-                    isSwiping = false
-                    return true
-                }
-                if (longPressTriggered) {
-                    longPressTriggered = false
-                    trackingSpaceKey = false
-                    isSwiping = false
-                    return true
-                }
+                val wasSwipe = trackingSpaceKey && isSwiping
+                val wasSpaceLongPress = spaceLongPressTriggered
+                val wasHintOrActionLongPress = longPressTriggered
+                spaceLongPressTriggered = false
+                longPressTriggered = false
                 trackingSpaceKey = false
                 isSwiping = false
+
+                val downCode = downKeyCode
+                downKeyCode = null
+
+                if (me.actionMasked == MotionEvent.ACTION_UP &&
+                    !wasSwipe && !wasSpaceLongPress && !wasHintOrActionLongPress &&
+                    downCode != null
+                ) {
+                    val releaseKey = keyAt(me.x, me.y)
+                    if (releaseKey?.codes?.firstOrNull() == downCode) {
+                        keyListener?.onKey(downCode, null)
+                    }
+                }
+
+                downCode?.let { keyListener?.onRelease(it) }
             }
         }
-
-        return super.onTouchEvent(me)
     }
 
     private fun scheduleSpaceLongPress() {
