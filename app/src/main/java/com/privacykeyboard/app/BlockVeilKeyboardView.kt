@@ -42,7 +42,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     var onActionLongPress: ((code: Int) -> Unit)? = null
 
     // Key codes rendered with the "function key" color instead of the letter color.
-    var functionKeyCodes: Set<Int> = setOf(-1, -5, -4, -20, -21, -22, -24, -30)
+    var functionKeyCodes: Set<Int> = setOf(-1, -5, -4, -20, -21, -22, -24, -25, -26, -30, 43, 8722, 42, 37)
     // Key codes whose label is a single icon glyph, drawn larger than multi-character labels.
     var iconKeyCodes: Set<Int> = setOf(-1, -5, -4)
     // Key codes drawn with an icon Drawable instead of a text label.
