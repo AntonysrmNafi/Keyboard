@@ -121,14 +121,6 @@ class AppearanceSettingsActivity : Activity() {
                 false
             )
         )
-        container.addView(
-            buildSwitchRow(
-                SettingsStore.KEY_FORCED_ENTER_BUTTON,
-                "Forced enter button",
-                "Always show a plain enter arrow, never an emoji, on the last key",
-                true
-            )
-        )
     }
 
     private fun buildSwitchRow(key: String, title: String, subtitle: String, default: Boolean): LinearLayout {
