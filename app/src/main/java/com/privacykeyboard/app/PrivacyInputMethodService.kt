@@ -116,7 +116,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
         keyboardView.actionLongPressCodes = setOf(COPY_KEY_CODE, CUT_KEY_CODE, PASTE_KEY_CODE)
         keyboardView.onActionLongPress = { code -> handleClipboardAction(code) }
-        getDrawable(R.drawable.ic_emoji_white)?.let { drawable ->
+        getDrawable(R.drawable.sentiment_satisfied_24)?.mutate()?.let { drawable ->
+            drawable.setTint(android.graphics.Color.WHITE)
             keyboardView.iconDrawables = mapOf(EMOJI_PLACEHOLDER_CODE to drawable)
         }
 
@@ -284,6 +285,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             }
             MODE_SWITCH_CODE -> switchMode()
             EMOJI_PLACEHOLDER_CODE -> { /* Emoji panel not implemented yet - deliberately does nothing */ }
+            BlockVeilKeyboardView.SPACER_KEY_CODE -> { /* Decorative spacer, no action */ }
             SYMBOLS_TOGGLE_CODE -> {
                 showingSymbols = true
                 symbolsPageTwo = false
