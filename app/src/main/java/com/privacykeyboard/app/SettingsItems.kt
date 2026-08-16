@@ -44,12 +44,6 @@ object SettingsItems {
             "Sound on keypress",
             "Play the system click sound on every key",
             false
-        ),
-        ToggleItem(
-            SettingsStore.KEY_POPUP_ON_KEYPRESS,
-            "Popup on keypress",
-            "Show a preview bubble above the pressed key",
-            true
         )
     )
 
