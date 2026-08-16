@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.drawable.Drawable
 import android.inputmethodservice.Keyboard
 import android.inputmethodservice.KeyboardView
 import android.util.AttributeSet
@@ -11,20 +12,23 @@ import android.view.MotionEvent
 import kotlin.math.abs
 
 // Fully custom-drawn keyboard view so letter keys and function keys (shift,
-// backspace, enter, ?123, ABC) can have different colors - something the
-// stock single keyBackground drawable can't do. Also adds three gestures on
-// top of the normal tap:
+// backspace, enter, ?123, ABC) can have different colors, the shift key can
+// show an active/highlighted state, and letter keys preview uppercase while
+// shifted - none of which the stock single keyBackground drawable can do.
+//
+// Gestures on top of the normal tap:
 // 1. Horizontal drag on the spacebar moves the text cursor.
 // 2. Long-press on the spacebar (without dragging) switches the typing language.
 // 3. Long-press on a key with a registered "hint" inserts that hint character
 //    (a lightweight number row on the top letter row).
+// 4. Long-press on a registered "action" key (c/x/v) copies, cuts, or pastes
+//    the whole text field.
 class BlockVeilKeyboardView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : KeyboardView(context, attrs) {
 
     var spaceCursorEnabled: Boolean = true
-    // Pixels of drag needed per single cursor step. Smaller = faster/more sensitive.
     var pixelsPerCursorStep: Float = 60f
     var onCursorSwipe: ((steps: Int) -> Unit)? = null
     var onSpaceLongPress: (() -> Unit)? = null
@@ -33,10 +37,16 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     var hintsEnabled: Boolean = true
     var onHintLongPress: ((hint: String) -> Unit)? = null
 
+    // Keys that trigger an action on long-press instead of (or in addition to) a hint.
+    var actionLongPressCodes: Set<Int> = emptySet()
+    var onActionLongPress: ((code: Int) -> Unit)? = null
+
     // Key codes rendered with the "function key" color instead of the letter color.
     var functionKeyCodes: Set<Int> = setOf(-1, -5, -4, -20, -21, -22, -24, -30)
     // Key codes whose label is a single icon glyph, drawn larger than multi-character labels.
     var iconKeyCodes: Set<Int> = setOf(-1, -5, -4)
+    // Key codes drawn with an icon Drawable instead of a text label.
+    var iconDrawables: Map<Int, Drawable> = emptyMap()
 
     private var trackingSpaceKey = false
     private var isSwiping = false
@@ -79,6 +89,10 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         color = 0xFF3A5F52.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 13f
     }
+    private val shiftActiveIconPaint = Paint(letterLabelPaint).apply {
+        color = 0xFF0D1F1A.toInt()
+        textSize = context.resources.displayMetrics.scaledDensity * 20f
+    }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.RIGHT
         color = 0xFF0D1F1A.toInt()
@@ -89,13 +103,17 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         val kb = keyboard ?: return
+        val shiftActive = kb.isShifted
 
         for (key in kb.keys) {
             val code = key.codes.firstOrNull() ?: 0
+            val isShiftKey = code == -1
             val isFunction = functionKeyCodes.contains(code)
             val pressed = pressedKeyCode == code
 
             val bgPaint = when {
+                isShiftKey && shiftActive && pressed -> letterPressedPaint
+                isShiftKey && shiftActive -> letterPaint
                 isFunction && pressed -> functionPressedPaint
                 isFunction -> functionPaint
                 pressed -> letterPressedPaint
@@ -110,9 +128,23 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             )
             canvas.drawRoundRect(rect, cornerRadius, cornerRadius, bgPaint)
 
-            val label = key.label?.toString()
-            if (!label.isNullOrEmpty()) {
+            val drawable = iconDrawables[code]
+            if (drawable != null) {
+                val iconSize = (rect.height() * 0.5f).toInt()
+                val left = (rect.centerX() - iconSize / 2f).toInt()
+                val top = (rect.centerY() - iconSize / 2f).toInt()
+                drawable.setBounds(left, top, left + iconSize, top + iconSize)
+                drawable.draw(canvas)
+                continue
+            }
+
+            val rawLabel = key.label?.toString()
+            if (!rawLabel.isNullOrEmpty()) {
+                val isSingleLetter = rawLabel.length == 1 && rawLabel[0].isLetter() && !isFunction && code != 32
+                val label = if (shiftActive && isSingleLetter) rawLabel.uppercase() else rawLabel
+
                 val labelPaint = when {
+                    isShiftKey && shiftActive -> shiftActiveIconPaint
                     code == 32 -> spaceLabelPaint
                     isFunction && iconKeyCodes.contains(code) -> functionIconPaint
                     isFunction -> functionLabelPaint
@@ -224,16 +256,23 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     }
 
     private fun scheduleLongPressCheck(x: Float, y: Float) {
-        if (!hintsEnabled || hintMap.isEmpty()) return
         val key = keyAt(x, y) ?: return
-        val hint = hintMap[key.codes.firstOrNull()] ?: return
+        val code = key.codes.firstOrNull() ?: return
+
+        val hint = if (hintsEnabled) hintMap[code] else null
+        val isActionKey = actionLongPressCodes.contains(code)
+        if (hint == null && !isActionKey) return
 
         longPressStartX = x
         longPressStartY = y
         longPressTriggered = false
         val runnable = Runnable {
             longPressTriggered = true
-            onHintLongPress?.invoke(hint)
+            if (hint != null) {
+                onHintLongPress?.invoke(hint)
+            } else {
+                onActionLongPress?.invoke(code)
+            }
         }
         longPressRunnable = runnable
         longPressHandler.postDelayed(runnable, 350)
