@@ -25,12 +25,14 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     private lateinit var keyboardView: BlockVeilKeyboardView
     private lateinit var suggestionStrip: LinearLayout
-    private lateinit var textToolButton: android.widget.FrameLayout
+    private lateinit var textToolButton: TextView
     private lateinit var toolbarIconsGroup: LinearLayout
     private lateinit var suggestionsGroup: LinearLayout
     private lateinit var clipboardButton: android.widget.ImageView
     private lateinit var clipboardPanel: LinearLayout
     private lateinit var clipboardList: LinearLayout
+    private lateinit var emojiPanel: LinearLayout
+    private lateinit var emojiCategoryRow: LinearLayout
 
     // When true, the icon toolbar stays visible even while a word is being composed
     // (the user tapped the T button to peek at it). Resets on the next keystroke.
@@ -119,8 +121,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
         keyboardView = view.findViewById(R.id.keyboard_view)
         keyboardView.setOnKeyboardActionListener(this)
-        keyboardView.onCursorSwipe = { steps -> moveCursor(steps) }
-        keyboardView.onSpaceLongPress = { switchMode() }
+        keyboardView.onSpaceSwipe = { switchMode() }
         keyboardView.hintMap = topRowHints
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
         keyboardView.actionLongPressCodes = setOf(COPY_KEY_CODE, CUT_KEY_CODE, PASTE_KEY_CODE)
@@ -131,6 +132,10 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             keyboardView.iconDrawables = buildMap {
                 put(EMOJI_PLACEHOLDER_CODE, drawable)
                 if (enterDrawable != null) put(-4, enterDrawable)
+                getDrawable(R.drawable.backspace_24)?.mutate()?.let { backspaceDrawable ->
+                    backspaceDrawable.setTint(android.graphics.Color.WHITE)
+                    put(-5, backspaceDrawable)
+                }
             }
         }
 
@@ -140,6 +145,15 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         suggestionsGroup = view.findViewById(R.id.suggestions_group)
         textToolButton.setOnClickListener {
             forceToolbar = true
+            var changed = false
+            if (showingNumpad) { showingNumpad = false; changed = true }
+            if (showingSymbols) { showingSymbols = false; symbolsPageTwo = false; changed = true }
+            if (clipboardPanel.visibility == View.VISIBLE) { hideClipboardPanel() }
+            if (emojiPanel.visibility == View.VISIBLE) { hideEmojiPanel() }
+            if (changed) {
+                resetWordState()
+                applyKeyboardForMode()
+            }
             updateTopStripVisibility()
         }
 
@@ -168,6 +182,13 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             applyKeyboardForMode()
         }
 
+        view.findViewById<android.widget.ImageView>(R.id.icon_emoji_top).setOnClickListener { showEmojiPanel() }
+
+        emojiPanel = view.findViewById(R.id.emoji_panel)
+        emojiCategoryRow = view.findViewById(R.id.emoji_category_row)
+        buildEmojiCategoryIcons()
+        view.findViewById<TextView>(R.id.emoji_abc_button).setOnClickListener { hideEmojiPanel() }
+
         clipboardPanel = view.findViewById(R.id.clipboard_panel)
         clipboardList = view.findViewById(R.id.clipboard_list)
         view.findViewById<TextView>(R.id.clipboard_close_button).setOnClickListener { hideClipboardPanel() }
@@ -191,6 +212,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         numpadBangla = false
         updateNumpadDigitLabels()
         hideClipboardPanel()
+        hideEmojiPanel()
         applySettings()
         applyKeyboardForMode()
     }
@@ -202,13 +224,13 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         val showSuggestions = SettingsStore.getBoolean(this, SettingsStore.KEY_SHOW_SUGGESTIONS, true)
         suggestionStrip.visibility = if (showSuggestions) View.VISIBLE else View.GONE
 
-        keyboardView.spaceCursorEnabled = SettingsStore.getBoolean(this, SettingsStore.KEY_SPACE_CURSOR_ENABLED, true)
-        val speedLevel = SettingsStore.getInt(this, SettingsStore.KEY_SPACE_CURSOR_SPEED, 1)
+        keyboardView.spaceSwipeEnabled = SettingsStore.getBoolean(this, SettingsStore.KEY_SPACE_CURSOR_ENABLED, true)
+        val sensitivityLevel = SettingsStore.getInt(this, SettingsStore.KEY_SPACE_CURSOR_SPEED, 1)
         val density = resources.displayMetrics.density
-        keyboardView.pixelsPerCursorStep = when (speedLevel) {
-            0 -> 48f * density
-            2 -> 24f * density
-            else -> 36f * density
+        keyboardView.spaceSwipeThreshold = when (sensitivityLevel) {
+            0 -> 48f * density // Slow, needs more drag before switching
+            2 -> 24f * density // Fast, needs less drag before switching
+            else -> 36f * density // Default
         }
 
         applySizingAndOneHanded()
@@ -249,15 +271,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         val showToolbar = rawWordBuffer.isEmpty() || forceToolbar
         toolbarIconsGroup.visibility = if (showToolbar) View.VISIBLE else View.GONE
         suggestionsGroup.visibility = if (showToolbar) View.GONE else View.VISIBLE
-    }
-
-    private fun moveCursor(steps: Int) {
-        val ic = currentInputConnection ?: return
-        val keyCode = if (steps > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
-        repeat(kotlin.math.abs(steps)) {
-            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
-            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
-        }
     }
 
     private fun applyKeyboardForMode() {
@@ -313,10 +326,11 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             Keyboard.KEYCODE_SHIFT -> toggleShift()
             Keyboard.KEYCODE_DONE -> {
                 commitWordBoundary(ic, "")
-                ic.performEditorAction(EditorInfo.IME_ACTION_DONE)
+                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
             }
             MODE_SWITCH_CODE -> switchMode()
-            EMOJI_PLACEHOLDER_CODE -> { /* Emoji panel not implemented yet - deliberately does nothing */ }
+            EMOJI_PLACEHOLDER_CODE -> showEmojiPanel()
             BlockVeilKeyboardView.SPACER_KEY_CODE -> { /* Decorative spacer, no action */ }
             SYMBOLS_TOGGLE_CODE -> {
                 showingSymbols = true
@@ -601,6 +615,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     }
 
     private fun showClipboardPanel() {
+        hideEmojiPanel()
         refreshClipboardList()
         clipboardPanel.visibility = View.VISIBLE
         keyboardView.visibility = View.INVISIBLE
@@ -610,6 +625,55 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         if (!::clipboardPanel.isInitialized) return
         clipboardPanel.visibility = View.GONE
         keyboardView.visibility = View.VISIBLE
+    }
+
+    private fun showEmojiPanel() {
+        hideClipboardPanel()
+        emojiPanel.visibility = View.VISIBLE
+        keyboardView.visibility = View.INVISIBLE
+    }
+
+    private fun hideEmojiPanel() {
+        if (!::emojiPanel.isInitialized) return
+        emojiPanel.visibility = View.GONE
+        keyboardView.visibility = View.VISIBLE
+    }
+
+    private fun buildEmojiCategoryIcons() {
+        val glyphCategories = listOf(
+            "\uD83D\uDD52", // recent
+            "\uD83D\uDE42", // smileys
+            "\uD83C\uDF38", // nature
+            "\uD83C\uDF82", // food
+            "\uD83C\uDFC0", // activities
+            "\uD83D\uDE97", // travel
+            "\uD83D\uDC51", // objects
+            "\u25B2"        // symbols
+        )
+
+        emojiCategoryRow.addView(buildEmojiCategoryImage(R.drawable.search_24))
+        glyphCategories.forEach { glyph ->
+            emojiCategoryRow.addView(TextView(this).apply {
+                text = glyph
+                textSize = 15f
+                gravity = android.view.Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+                // Not wired to anything yet - the emoji grid itself isn't built out.
+            })
+        }
+        emojiCategoryRow.addView(buildEmojiCategoryImage(R.drawable.flag_2_24))
+    }
+
+    private fun buildEmojiCategoryImage(drawableRes: Int): android.widget.ImageView {
+        return android.widget.ImageView(this).apply {
+            setImageResource(drawableRes)
+            setColorFilter(0xFF3A5F52.toInt())
+            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply {
+                val inset = (10 * resources.displayMetrics.density).toInt()
+                setMargins(inset, inset, inset, inset)
+            }
+        }
     }
 
     private fun refreshClipboardList() {
