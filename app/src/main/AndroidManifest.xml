@@ -43,6 +43,11 @@
             android:theme="@style/Theme.BlockVeil" />
 
         <activity
+            android:name=".ClipboardSettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BlockVeil" />
+
+        <activity
             android:name=".AppearanceSettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.BlockVeil" />
