@@ -24,8 +24,9 @@ import kotlin.math.abs
 // the OnKeyboardActionListener.
 //
 // Gestures:
-// 1. Horizontal drag on the spacebar moves the text cursor.
-// 2. Long-press on the spacebar (without dragging) switches the typing language.
+// 1. Swipe (drag) on the spacebar switches the typing language.
+// 2. A plain press-and-hold on the spacebar (no drag) just types a space,
+//    same as a normal tap.
 // 3. Long-press on a key with a registered "hint" inserts that hint character
 //    (a lightweight number row on the top letter row).
 // 4. Long-press on a registered "action" key (c/x/v) copies, cuts, or pastes
@@ -35,10 +36,10 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : KeyboardView(context, attrs) {
 
-    var spaceCursorEnabled: Boolean = true
-    var pixelsPerCursorStep: Float = 60f
-    var onCursorSwipe: ((steps: Int) -> Unit)? = null
-    var onSpaceLongPress: (() -> Unit)? = null
+    var spaceSwipeEnabled: Boolean = true
+    // Horizontal drag distance (px) needed before a spacebar swipe triggers the language switch.
+    var spaceSwipeThreshold: Float = 60f
+    var onSpaceSwipe: (() -> Unit)? = null
 
     var hintMap: Map<Int, String> = emptyMap()
     var hintsEnabled: Boolean = true
@@ -66,7 +67,6 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private var trackingSpaceKey = false
     private var isSwiping = false
     private var startX = 0f
-    private var accumulatedDeltaX = 0f
 
     private var pressedKeyCode: Int? = null
     private var downKeyCode: Int? = null
@@ -76,9 +76,6 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private var longPressTriggered = false
     private var longPressStartX = 0f
     private var longPressStartY = 0f
-
-    private var spaceLongPressRunnable: Runnable? = null
-    private var spaceLongPressTriggered = false
 
     private val density = context.resources.displayMetrics.density
     private val cornerRadius = 8f * density
@@ -222,10 +219,9 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private fun handleTouch(me: MotionEvent) {
         when (me.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                trackingSpaceKey = spaceCursorEnabled && isOnSpaceKey(me.x, me.y)
+                trackingSpaceKey = spaceSwipeEnabled && isOnSpaceKey(me.x, me.y)
                 isSwiping = false
                 startX = me.x
-                accumulatedDeltaX = 0f
 
                 val key = keyAt(me.x, me.y)
                 val code = key?.codes?.firstOrNull()
@@ -235,27 +231,16 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
                 code?.let { keyListener?.onPress(it) }
 
-                if (trackingSpaceKey) {
-                    scheduleSpaceLongPress()
-                } else {
+                if (!trackingSpaceKey) {
                     scheduleLongPressCheck(me.x, me.y)
                 }
             }
             MotionEvent.ACTION_MOVE -> {
                 if (trackingSpaceKey) {
                     val dx = me.x - startX
-                    if (!isSwiping && abs(dx) > pixelsPerCursorStep / 2f) {
+                    if (!isSwiping && abs(dx) > spaceSwipeThreshold) {
                         isSwiping = true
-                        cancelSpaceLongPress()
-                    }
-                    if (isSwiping) {
-                        accumulatedDeltaX += (me.x - startX)
-                        startX = me.x
-                        val steps = (accumulatedDeltaX / pixelsPerCursorStep).toInt()
-                        if (steps != 0) {
-                            onCursorSwipe?.invoke(steps)
-                            accumulatedDeltaX -= steps * pixelsPerCursorStep
-                        }
+                        onSpaceSwipe?.invoke()
                     }
                 } else if (longPressRunnable != null) {
                     val moved = abs(me.x - longPressStartX) + abs(me.y - longPressStartY)
@@ -276,14 +261,11 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 cancelLongPressCheck()
-                cancelSpaceLongPress()
                 pressedKeyCode = null
                 invalidate()
 
                 val wasSwipe = trackingSpaceKey && isSwiping
-                val wasSpaceLongPress = spaceLongPressTriggered
                 val wasHintOrActionLongPress = longPressTriggered
-                spaceLongPressTriggered = false
                 longPressTriggered = false
                 trackingSpaceKey = false
                 isSwiping = false
@@ -292,7 +274,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 downKeyCode = null
 
                 if (me.actionMasked == MotionEvent.ACTION_UP &&
-                    !wasSwipe && !wasSpaceLongPress && !wasHintOrActionLongPress &&
+                    !wasSwipe && !wasHintOrActionLongPress &&
                     downCode != null
                 ) {
                     val releaseKey = keyAt(me.x, me.y)
@@ -304,21 +286,6 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 downCode?.let { keyListener?.onRelease(it) }
             }
         }
-    }
-
-    private fun scheduleSpaceLongPress() {
-        spaceLongPressTriggered = false
-        val runnable = Runnable {
-            spaceLongPressTriggered = true
-            onSpaceLongPress?.invoke()
-        }
-        spaceLongPressRunnable = runnable
-        longPressHandler.postDelayed(runnable, 450)
-    }
-
-    private fun cancelSpaceLongPress() {
-        spaceLongPressRunnable?.let { longPressHandler.removeCallbacks(it) }
-        spaceLongPressRunnable = null
     }
 
     private fun scheduleLongPressCheck(x: Float, y: Float) {
