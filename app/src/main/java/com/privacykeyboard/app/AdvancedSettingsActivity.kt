@@ -7,7 +7,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 // Advanced screen with settings that need a value picker rather than a simple
-// on/off switch. Currently just Space cursor speed; more will land here as
+// on/off switch. Currently just Space swipe sensitivity; more will land here as
 // more of the keyboard becomes configurable.
 class AdvancedSettingsActivity : Activity() {
 
@@ -32,7 +32,7 @@ class AdvancedSettingsActivity : Activity() {
         }
 
         val titleView = TextView(this).apply {
-            text = "Space cursor speed"
+            text = "Space swipe sensitivity"
             setTextColor(resources.getColor(R.color.text_primary))
             textSize = 16f
         }
@@ -60,7 +60,7 @@ class AdvancedSettingsActivity : Activity() {
     private fun showSpeedPicker(valueView: TextView) {
         val labels = arrayOf("Slow", "Default", "Fast")
         AlertDialog.Builder(this)
-            .setTitle("Space cursor speed")
+            .setTitle("Space swipe sensitivity")
             .setSingleChoiceItems(labels, currentSpeed()) { dialog, which ->
                 SettingsStore.setInt(this, SettingsStore.KEY_SPACE_CURSOR_SPEED, which)
                 valueView.text = speedLabel(which)
