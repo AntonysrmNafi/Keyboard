@@ -25,7 +25,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     private lateinit var keyboardView: BlockVeilKeyboardView
     private lateinit var suggestionStrip: LinearLayout
-    private lateinit var textToolButton: android.widget.ImageView
+    private lateinit var textToolButton: android.widget.FrameLayout
     private lateinit var toolbarIconsGroup: LinearLayout
     private lateinit var suggestionsGroup: LinearLayout
     private lateinit var clipboardButton: android.widget.ImageView
@@ -463,6 +463,9 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             if (code in 48..57) {
                 val latinDigit = code.toChar()
                 key.label = if (numpadBangla) latinToBanglaDigit[latinDigit].toString() else latinDigit.toString()
+            } else if (code == NUMPAD_BANGLA_TOGGLE_CODE) {
+                // Shows what tapping it will switch TO, not the current state.
+                key.label = if (numpadBangla) "123" else "\u09E7\u09E8\u09E9"
             }
         }
     }
