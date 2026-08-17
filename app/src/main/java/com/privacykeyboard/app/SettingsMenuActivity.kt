@@ -1,86 +1,71 @@
 package com.privacykeyboard.app
 
 import android.app.Activity
-import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
 import android.widget.LinearLayout
+import android.widget.Switch
 import android.widget.TextView
 
-// Top-level settings menu: Preferences, Appearance & Layouts, Text correction,
-// Advanced, Release notes, About. Matches the section grouping style of
-// well-known keyboard apps, trimmed to only what BlockVeil actually implements.
-class SettingsMenuActivity : Activity() {
+// Renders one settings section (Preferences / Appearance & Layouts / Text correction)
+// as a list of switch rows. Every row reads and writes SettingsStore directly,
+// so toggles take effect the next time the keyboard reads that key.
+class SettingsSectionActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_settings_menu)
+        setContentView(R.layout.activity_settings_section)
 
+        val section = intent.getStringExtra(EXTRA_SECTION) ?: SettingsItems.SECTION_PREFERENCES
+        val (title, items) = SettingsItems.forSection(section)
+
+        findViewById<TextView>(R.id.section_title).text = title
         findViewById<TextView>(R.id.back_button).setOnClickListener { finish() }
 
-        val container = findViewById<LinearLayout>(R.id.menu_container)
-
-        container.addView(buildMenuRow("Preferences", "Typing behavior and keypress feedback") {
-            openSection(SettingsItems.SECTION_PREFERENCES)
-        })
-        container.addView(buildMenuRow("Appearance & Layouts", "Number row, sizing, one-handed and more") {
-            startActivity(Intent(this, AppearanceSettingsActivity::class.java))
-        })
-        container.addView(buildMenuRow("Text correction", "Suggestions and word filtering") {
-            openSection(SettingsItems.SECTION_TEXT_CORRECTION)
-        })
-        container.addView(buildMenuRow("Advanced", "Fine-tuning options") {
-            startActivity(Intent(this, AdvancedSettingsActivity::class.java))
-        })
-        container.addView(buildMenuRow("Release notes", null) {
-            openInfo("Release notes", InfoActivity.RELEASE_NOTES)
-        })
-        container.addView(buildMenuRow("About", "About BlockVeil Keyboard") {
-            openInfo("About", InfoActivity.ABOUT_TEXT)
-        })
+        val container = findViewById<LinearLayout>(R.id.row_container)
+        items.forEach { item -> container.addView(buildRow(item)) }
     }
 
-    private fun openSection(section: String) {
-        startActivity(
-            Intent(this, SettingsSectionActivity::class.java)
-                .putExtra(SettingsSectionActivity.EXTRA_SECTION, section)
-        )
-    }
-
-    private fun openInfo(title: String, body: String) {
-        startActivity(
-            Intent(this, InfoActivity::class.java)
-                .putExtra(InfoActivity.EXTRA_TITLE, title)
-                .putExtra(InfoActivity.EXTRA_BODY, body)
-        )
-    }
-
-    private fun buildMenuRow(title: String, subtitle: String?, onClick: () -> Unit): LinearLayout {
+    private fun buildRow(item: ToggleItem): LinearLayout {
         val row = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(20), dp(16), dp(20), dp(16))
-            setOnClickListener { onClick() }
-            isClickable = true
-            isFocusable = true
         }
 
-        row.addView(TextView(this).apply {
-            text = title
+        val textColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+
+        val titleView = TextView(this).apply {
+            text = item.title
             setTextColor(resources.getColor(R.color.text_primary))
             textSize = 16f
-        })
+        }
+        val subtitleView = TextView(this).apply {
+            text = item.subtitle
+            setTextColor(resources.getColor(R.color.text_secondary))
+            textSize = 12f
+        }
+        textColumn.addView(titleView)
+        textColumn.addView(subtitleView)
 
-        if (subtitle != null) {
-            row.addView(TextView(this).apply {
-                text = subtitle
-                setTextColor(resources.getColor(R.color.text_secondary))
-                textSize = 12f
-            })
+        val switch = Switch(this).apply {
+            isChecked = SettingsStore.getBoolean(context, item.key, item.default)
+            setOnCheckedChangeListener { _, isChecked ->
+                SettingsStore.setBoolean(context, item.key, isChecked)
+            }
         }
 
+        row.addView(textColumn)
+        row.addView(switch)
         return row
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    companion object {
+        const val EXTRA_SECTION = "section"
+    }
 }
