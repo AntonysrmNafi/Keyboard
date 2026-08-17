@@ -47,8 +47,8 @@ class AppearanceSettingsActivity : Activity() {
         container.addView(
             buildSwitchRow(
                 SettingsStore.KEY_SPACE_CURSOR_ENABLED,
-                "Space cursor",
-                "Swipe left or right on the spacebar to move the text cursor",
+                "Space swipe",
+                "Swipe left or right on the spacebar to switch typing language",
                 true
             )
         )
