@@ -38,6 +38,9 @@ class SettingsMenuActivity : Activity() {
         container.addView(buildMenuRow("Release notes", null) {
             openInfo("Release notes", InfoActivity.RELEASE_NOTES)
         })
+        container.addView(buildMenuRow("Privacy Policy", null) {
+            openInfo("Privacy Policy", InfoActivity.PRIVACY_POLICY)
+        })
         container.addView(buildMenuRow("About", "About BlockVeil Keyboard") {
             openInfo("About", InfoActivity.ABOUT_TEXT)
         })
