@@ -128,7 +128,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         keyboardView.onActionLongPress = { code -> handleClipboardAction(code) }
         getDrawable(R.drawable.sentiment_satisfied_24)?.mutate()?.let { drawable ->
             drawable.setTint(android.graphics.Color.WHITE)
-            val enterDrawable = getDrawable(R.drawable.ic_enter)
+            val enterDrawable = getDrawable(R.drawable.keyboard_return_24)
             keyboardView.iconDrawables = buildMap {
                 put(EMOJI_PLACEHOLDER_CODE, drawable)
                 if (enterDrawable != null) put(-4, enterDrawable)
@@ -138,6 +138,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
                 }
             }
         }
+        keyboardView.shiftIconRest = getDrawable(R.drawable.arrow_shape_up_24)
+        keyboardView.shiftIconActive = getDrawable(R.drawable.arrow_shape_up_24_filled)
 
         suggestionStrip = view.findViewById(R.id.suggestion_strip)
         textToolButton = view.findViewById(R.id.icon_text_tool)
@@ -294,7 +296,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             showingSymbols -> "space"
             mode == InputMode.ENGLISH -> "\u25C0 English \u25B6"
             mode == InputMode.BANGLA_PHONETIC -> "\u25C0 বাংলা ফোনেটিক \u25B6"
-            else -> "\u25C0 বাংলা \u25B6"
+            else -> "\u25C0 প্রভাত \u25B6"
         }
         keyboardView.keyboard?.keys?.firstOrNull { it.codes.firstOrNull() == 32 }?.label = spaceLabel
 
@@ -640,26 +642,20 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     }
 
     private fun buildEmojiCategoryIcons() {
-        val glyphCategories = listOf(
-            "\uD83D\uDD52", // recent
-            "\uD83D\uDE42", // smileys
-            "\uD83C\uDF38", // nature
-            "\uD83C\uDF82", // food
-            "\uD83C\uDFC0", // activities
-            "\uD83D\uDE97", // travel
-            "\uD83D\uDC51", // objects
-            "\u25B2"        // symbols
+        val drawableCategories = listOf(
+            R.drawable.clock_loader_10_24,   // recent
+            R.drawable.sentiment_satisfied_24, // smileys
+            R.drawable.emoji_people_24,      // nature -> people (per latest request)
+            R.drawable.local_florist_24,     // food -> florist (per latest request)
+            R.drawable.sports_soccer_24,     // activities
+            R.drawable.directions_car_24,    // travel
+            R.drawable.crown_24,             // objects
+            R.drawable.bolt_24               // symbols
         )
 
         emojiCategoryRow.addView(buildEmojiCategoryImage(R.drawable.search_24))
-        glyphCategories.forEach { glyph ->
-            emojiCategoryRow.addView(TextView(this).apply {
-                text = glyph
-                textSize = 15f
-                gravity = android.view.Gravity.CENTER
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
-                // Not wired to anything yet - the emoji grid itself isn't built out.
-            })
+        drawableCategories.forEach { res ->
+            emojiCategoryRow.addView(buildEmojiCategoryImage(res))
         }
         emojiCategoryRow.addView(buildEmojiCategoryImage(R.drawable.flag_2_24))
     }
