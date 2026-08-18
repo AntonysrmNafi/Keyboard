@@ -55,6 +55,10 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     var iconKeyCodes: Set<Int> = setOf(-1, -5, -4)
     // Key codes drawn with an icon Drawable instead of a text label.
     var iconDrawables: Map<Int, Drawable> = emptyMap()
+    // Shift renders as one of these two dedicated icons (already colored blue in the
+    // drawable itself) instead of a text label - outline at rest, solid when active.
+    var shiftIconRest: Drawable? = null
+    var shiftIconActive: Drawable? = null
 
     // Our own listener reference. We deliberately do NOT forward to the base
     // class's setOnKeyboardActionListener/onTouchEvent - see class doc above.
@@ -160,6 +164,18 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             )
             canvas.drawRoundRect(rect, cornerRadius, cornerRadius, bgPaint)
 
+            if (isShiftKey) {
+                val shiftDrawable = if (shiftActive) shiftIconActive else shiftIconRest
+                if (shiftDrawable != null) {
+                    val iconSize = (rect.height() * 0.5f).toInt()
+                    val left = (rect.centerX() - iconSize / 2f).toInt()
+                    val top = (rect.centerY() - iconSize / 2f).toInt()
+                    shiftDrawable.setBounds(left, top, left + iconSize, top + iconSize)
+                    shiftDrawable.draw(canvas)
+                    continue
+                }
+            }
+
             val drawable = iconDrawables[code]
             if (drawable != null) {
                 val iconSize = (rect.height() * 0.5f).toInt()
@@ -176,8 +192,6 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 val label = if (shiftActive && isSingleLetter) rawLabel.uppercase() else rawLabel
 
                 val labelPaint = when {
-                    isShiftKey && shiftActive -> functionIconPaint
-                    isShiftKey -> shiftRestIconPaint
                     code == 32 -> spaceLabelPaint
                     isFunction && iconKeyCodes.contains(code) -> functionIconPaint
                     isFunction -> functionLabelPaint
