@@ -633,12 +633,15 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         hideClipboardPanel()
         emojiPanel.visibility = View.VISIBLE
         keyboardView.visibility = View.INVISIBLE
+        suggestionStrip.visibility = View.GONE
     }
 
     private fun hideEmojiPanel() {
         if (!::emojiPanel.isInitialized) return
         emojiPanel.visibility = View.GONE
         keyboardView.visibility = View.VISIBLE
+        val showSuggestions = SettingsStore.getBoolean(this, SettingsStore.KEY_SHOW_SUGGESTIONS, true)
+        suggestionStrip.visibility = if (showSuggestions) View.VISIBLE else View.GONE
     }
 
     private fun buildEmojiCategoryIcons() {
