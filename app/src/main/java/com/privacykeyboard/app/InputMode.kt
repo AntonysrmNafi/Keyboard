@@ -7,7 +7,9 @@ enum class InputMode(val label: String) {
 }
 
 fun InputMode.next(): InputMode = when (this) {
-    InputMode.ENGLISH -> InputMode.BANGLA_PHONETIC
+    // Bangla Phonetic is temporarily skipped in the cycle (not removed, just not
+    // reachable via the switcher right now).
+    InputMode.ENGLISH -> InputMode.BANGLA_TRADITIONAL
     InputMode.BANGLA_PHONETIC -> InputMode.BANGLA_TRADITIONAL
     InputMode.BANGLA_TRADITIONAL -> InputMode.ENGLISH
 }
