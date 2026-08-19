@@ -29,6 +29,9 @@ class SettingsMenuActivity : Activity() {
         container.addView(buildMenuRow("Text correction", "Suggestions and word filtering") {
             openSection(SettingsItems.SECTION_TEXT_CORRECTION)
         })
+        container.addView(buildMenuRow("Dictionary", "Browse the offline dictionary, manage your own words") {
+            startActivity(Intent(this, DictionarySettingsActivity::class.java))
+        })
         container.addView(buildMenuRow("Clipboard", "View and clear copied text history") {
             startActivity(Intent(this, ClipboardSettingsActivity::class.java))
         })
