@@ -36,4 +36,8 @@ object DictionaryProvider {
             candidate.startsWith(query)
         }.take(limit)
     }
+
+    fun allWords(isBangla: Boolean): List<String> = if (isBangla) bnWords else enWords
+
+    fun wordCount(isBangla: Boolean): Int = allWords(isBangla).size
 }
