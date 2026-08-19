@@ -48,6 +48,11 @@
             android:theme="@style/Theme.BlockVeil" />
 
         <activity
+            android:name=".DictionarySettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BlockVeil" />
+
+        <activity
             android:name=".AppearanceSettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.BlockVeil" />
