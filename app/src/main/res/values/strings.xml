@@ -12,6 +12,11 @@
     <string name="tile_settings_icon">&#9881;</string>
     <string name="tile_about_icon">&#9432;</string>
     <string name="tile_about_label">About</string>
+    <string name="tile_theme_icon">&#127912;</string>
+    <string name="tile_theme_label">Theme</string>
+    <string name="tile_customize_icon">&#128295;</string>
+    <string name="tile_customize_label">Customize</string>
+    <string name="coming_soon">Coming soon</string>
     <string name="icon_clipboard">&#128203;</string>
     <string name="icon_one_handed">&#9995;</string>
     <string name="clipboard_title">Clipboard</string>
