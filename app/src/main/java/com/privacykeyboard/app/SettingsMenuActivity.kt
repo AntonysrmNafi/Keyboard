@@ -38,14 +38,14 @@ class SettingsMenuActivity : Activity() {
         container.addView(buildMenuRow("Advanced", "Fine-tuning options") {
             startActivity(Intent(this, AdvancedSettingsActivity::class.java))
         })
+        container.addView(buildMenuRow("Support", "FAQ, feature suggestions, bug reports") {
+            startActivity(Intent(this, SupportActivity::class.java))
+        })
         container.addView(buildMenuRow("Release notes", null) {
             openInfo("Release notes", InfoActivity.RELEASE_NOTES)
         })
-        container.addView(buildMenuRow("Privacy Policy", null) {
-            openInfo("Privacy Policy", InfoActivity.PRIVACY_POLICY)
-        })
-        container.addView(buildMenuRow("About", "About BlockVeil Keyboard") {
-            openInfo("About", InfoActivity.ABOUT_TEXT)
+        container.addView(buildMenuRow("About", "About BlockVeil Keyboard, Privacy Policy, Terms & Conditions") {
+            startActivity(Intent(this, AboutActivity::class.java))
         })
     }
 
