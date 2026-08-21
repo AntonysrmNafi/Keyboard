@@ -53,12 +53,6 @@ object SettingsItems {
             "Show suggestions",
             "Display the offline suggestion bar while typing",
             true
-        ),
-        ToggleItem(
-            SettingsStore.KEY_BLOCK_OFFENSIVE_WORDS,
-            "Block offensive words",
-            "Do not suggest words from the built-in blocklist",
-            true
         )
     )
 
