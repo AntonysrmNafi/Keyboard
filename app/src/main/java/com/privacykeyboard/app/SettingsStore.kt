@@ -15,7 +15,6 @@ object SettingsStore {
     const val KEY_SOUND_ON_KEYPRESS = "sound_on_keypress"
     const val KEY_POPUP_ON_KEYPRESS = "popup_on_keypress"
     const val KEY_SHOW_SUGGESTIONS = "show_suggestions"
-    const val KEY_BLOCK_OFFENSIVE_WORDS = "block_offensive_words"
     const val KEY_ENABLE_NUMBER_ROW = "enable_number_row"
     const val KEY_SPACE_CURSOR_ENABLED = "space_cursor_enabled"
     const val KEY_SPACE_CURSOR_SPEED = "space_cursor_speed" // 0=Slow, 1=Default, 2=Fast
