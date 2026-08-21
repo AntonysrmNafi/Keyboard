@@ -2,6 +2,7 @@ package com.privacykeyboard.app
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -37,6 +38,7 @@ class DictionarySettingsActivity : Activity() {
     private var searchQuery: String = ""
     private var selectedLetter: String? = null
     private var myDictScreen: String = MY_DICT_MENU
+    private var pendingUnlockLanguage: Boolean? = null
 
     private val colorBg by lazy { resources.getColor(R.color.bg_dark) }
     private val colorCard by lazy { resources.getColor(R.color.keyboard_bg) }
@@ -52,10 +54,45 @@ class DictionarySettingsActivity : Activity() {
         DictionaryProvider.load(this)
 
         findViewById<TextView>(R.id.section_title).text = "Dictionary"
-        findViewById<TextView>(R.id.back_button).setOnClickListener { finish() }
+        findViewById<TextView>(R.id.back_button).setOnClickListener {
+            if (!stepBackOrFinish()) finish()
+        }
 
         container = findViewById(R.id.row_container)
         render()
+    }
+
+    // Point 3: the phone's own Back button used to close this whole screen
+    // immediately no matter how deep the user was (section -> language -> My
+    // Dictionary sub-screen). It now steps back one level at a time instead, the
+    // same as the on-screen back arrow above.
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (!stepBackOrFinish()) super.onBackPressed()
+    }
+
+    // Returns true if it just stepped back one level (and re-rendered). Returns
+    // false if there was nowhere left to step back to - the caller is then
+    // responsible for actually leaving the screen.
+    private fun stepBackOrFinish(): Boolean {
+        return when {
+            currentLanguageIsBangla != null && myDictScreen != MY_DICT_MENU -> {
+                myDictScreen = MY_DICT_MENU
+                render()
+                true
+            }
+            currentLanguageIsBangla != null -> {
+                currentLanguageIsBangla = null
+                render()
+                true
+            }
+            currentSection != null -> {
+                currentSection = null
+                render()
+                true
+            }
+            else -> false
+        }
     }
 
     private fun render() {
@@ -256,12 +293,37 @@ class DictionarySettingsActivity : Activity() {
     }
 
     // Only My Dictionary can be locked, and one PIN gates both languages equally.
+    // The PIN check itself always happens on its own full page (DictionaryUnlockActivity),
+    // never in a popup (Point 1).
     private fun openLanguage(section: String, isBangla: Boolean) {
         if (section == SECTION_MY && DictionaryLockStore.isLocked(this)) {
-            promptPin { selectLanguage(isBangla) }
+            pendingUnlockLanguage = isBangla
+            startActivityForResult(Intent(this, DictionaryUnlockActivity::class.java), REQUEST_UNLOCK_FOR_LANGUAGE)
         } else {
             selectLanguage(isBangla)
         }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK) return
+        when (requestCode) {
+            REQUEST_UNLOCK_FOR_LANGUAGE -> {
+                val isBangla = pendingUnlockLanguage
+                pendingUnlockLanguage = null
+                if (isBangla != null) selectLanguage(isBangla)
+            }
+            REQUEST_UNLOCK_FOR_MANAGE -> {
+                startActivity(Intent(this, DictionaryLockManageActivity::class.java))
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Lock state / word counts may have changed in DictionaryLockManageActivity,
+        // UserDictionaryStore, etc. while this screen was in the background.
+        render()
     }
 
     private fun selectLanguage(isBangla: Boolean) {
@@ -352,9 +414,13 @@ class DictionarySettingsActivity : Activity() {
         return row
     }
 
+    // Not locked yet -> straight to the full-page "Set PIN" screen.
+    // Already locked -> the full-page PIN screen must succeed first, then the
+    // management page (Change PIN/Pass, Remove PIN/Pass, Set/Change Email) opens.
+    // Neither step is ever a popup (Point 1 / Point 1.2).
     private fun openDictionarySecurityLock() {
         if (!DictionaryLockStore.isLocked(this)) {
-            showSetPinDialog(isChange = false)
+            startActivity(Intent(this, DictionaryLockManageActivity::class.java))
             return
         }
         val cooldown = DictionaryLockStore.cooldownSecondsRemaining(this)
@@ -362,104 +428,7 @@ class DictionarySettingsActivity : Activity() {
             Toast.makeText(this, "Too many attempts. Try again in ${cooldown}s.", Toast.LENGTH_SHORT).show()
             return
         }
-        // Changing or removing the lock always requires the current PIN first -
-        // there is no other way in, by design.
-        promptPin {
-            AlertDialog.Builder(this)
-                .setTitle("Dictionary Security Lock")
-                .setItems(arrayOf("Change PIN", "Remove Lock")) { _, which ->
-                    if (which == 0) {
-                        showSetPinDialog(isChange = true)
-                    } else {
-                        DictionaryLockStore.clearPin(this)
-                        Toast.makeText(this, "Lock removed", Toast.LENGTH_SHORT).show()
-                        render()
-                    }
-                }
-                .setNegativeButton("Cancel", null)
-                .show()
-        }
-    }
-
-    // Requires the PIN to be entered twice so a mistyped PIN can never lock the
-    // user out of their own dictionary.
-    private fun showSetPinDialog(isChange: Boolean) {
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(8), dp(24), 0)
-        }
-        val input1 = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            hint = "New PIN (4 to 8 digits)"
-            setTextColor(colorTextPrimary)
-            setHintTextColor(colorTextSecondary)
-        }
-        val input2 = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            hint = "Confirm PIN"
-            setTextColor(colorTextPrimary)
-            setHintTextColor(colorTextSecondary)
-        }
-        layout.addView(input1)
-        layout.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(0, dp(10)) })
-        layout.addView(input2)
-
-        AlertDialog.Builder(this)
-            .setTitle(if (isChange) "Change Dictionary PIN" else "Set Dictionary PIN")
-            .setMessage("One PIN protects both English and বাংলা My Dictionary.")
-            .setView(layout)
-            .setPositiveButton("Save") { _, _ ->
-                val pin1 = input1.text.toString()
-                val pin2 = input2.text.toString()
-                when {
-                    pin1.length < 4 -> Toast.makeText(this, "PIN must be at least 4 digits", Toast.LENGTH_SHORT).show()
-                    pin1.length > 8 -> Toast.makeText(this, "PIN must be at most 8 digits", Toast.LENGTH_SHORT).show()
-                    pin1 != pin2 -> Toast.makeText(this, "PINs do not match", Toast.LENGTH_SHORT).show()
-                    else -> {
-                        DictionaryLockStore.setPin(this, pin1)
-                        Toast.makeText(this, "Dictionary Security Lock is on", Toast.LENGTH_SHORT).show()
-                        render()
-                    }
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun promptPin(onSuccess: () -> Unit) {
-        val cooldown = DictionaryLockStore.cooldownSecondsRemaining(this)
-        if (cooldown > 0) {
-            Toast.makeText(this, "Too many attempts. Try again in ${cooldown}s.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        val input = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            hint = "Enter PIN"
-            setTextColor(colorTextPrimary)
-            setHintTextColor(colorTextSecondary)
-        }
-        val wrapper = FrameLayout(this).apply {
-            setPadding(dp(24), dp(8), dp(24), 0)
-            addView(input)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("My Dictionary is Locked")
-            .setMessage("Enter your Dictionary Security Lock PIN")
-            .setView(wrapper)
-            .setPositiveButton("Unlock") { _, _ ->
-                if (DictionaryLockStore.verifyPin(this, input.text.toString())) {
-                    onSuccess()
-                } else {
-                    val nowCooldown = DictionaryLockStore.cooldownSecondsRemaining(this)
-                    if (nowCooldown > 0) {
-                        Toast.makeText(this, "Too many attempts. Try again in ${nowCooldown}s.", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        startActivityForResult(Intent(this, DictionaryUnlockActivity::class.java), REQUEST_UNLOCK_FOR_MANAGE)
     }
 
     // --- BlockVeil Dictionary (bundled, read-only) -------------------------------------
@@ -911,5 +880,7 @@ class DictionarySettingsActivity : Activity() {
         private const val MY_DICT_VIEW = "view"
         private const val MY_DICT_EDIT = "edit"
         private val LIST_HOLDER_ID = View.generateViewId()
+        private const val REQUEST_UNLOCK_FOR_LANGUAGE = 1001
+        private const val REQUEST_UNLOCK_FOR_MANAGE = 1002
     }
 }
