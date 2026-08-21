@@ -6,7 +6,9 @@ import org.json.JSONArray
 // Backing store for the user's personal dictionary, kept separately per language and
 // completely independent from the bundled BlockVeil dictionary (DictionaryProvider) -
 // words added here never mix with, and are never sourced from, the bundled word lists.
-// Entirely on-device (SharedPreferences), nothing ever leaves the phone.
+// Every word (present and future) is written through SecureStorage, i.e. AES-256-GCM
+// encrypted at rest with an Android Keystore-held key, inside the app's private
+// "app data" storage - never Cache, and nothing ever leaves the phone.
 object UserDictionaryStore {
 
     private const val PREFS_NAME = "blockveil_user_dictionary"
@@ -58,6 +60,5 @@ object UserDictionaryStore {
         prefs(context).edit().putString(key(isBangla), array.toString()).apply()
     }
 
-    private fun prefs(context: Context) =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private fun prefs(context: Context) = SecureStorage.prefs(context, PREFS_NAME)
 }
