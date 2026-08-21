@@ -17,21 +17,22 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 
-// Two tabs:
-// - BlockVeil Dictionary: browse the bundled offline word list per language
-//   (search + alphabet jump chips), the same words used for typing suggestions.
-// - My Dictionary: personal dictionary management, fully wired to UserDictionaryStore
-//   and completely independent from the bundled BlockVeil word list above (words never
-//   mix between the two). Optionally PIN-locked per language via DictionaryLockStore;
-//   the lock control lives under the language picker, only on this tab.
+// Navigation is a strict 3-step flow, each step its own screen (nothing appears
+// side by side that shouldn't):
+//   1. Section picker  - "BlockVeil Dictionary" vs "My Dictionary" (two buttons only)
+//   2. Language picker - English vs বাংলা for whichever section was picked
+//   3. Content         - bundled word browser, or personal dictionary management
 //
-// Each tab keeps its own language choice: switching tabs always returns to the
-// language picker for that tab instead of carrying the previous tab's language over.
+// BlockVeil Dictionary is the bundled, read-only word list (also used for typing
+// suggestions). My Dictionary is the user's own word list, stored separately via
+// UserDictionaryStore and never mixed with the bundled list. My Dictionary can
+// optionally be protected by a single "Dictionary Security Lock" PIN that covers
+// both languages at once (DictionaryLockStore) - there is no per-language lock.
 class DictionarySettingsActivity : Activity() {
 
     private lateinit var container: LinearLayout
 
-    private var currentTab: String = TAB_BLOCKVEIL
+    private var currentSection: String? = null
     private var currentLanguageIsBangla: Boolean? = null
     private var searchQuery: String = ""
     private var selectedLetter: String? = null
@@ -61,74 +62,130 @@ class DictionarySettingsActivity : Activity() {
         container.removeAllViews()
         container.setPadding(0, dp(4), 0, dp(24))
 
-        container.addView(buildTabBar())
+        val section = currentSection
+        if (section == null) {
+            container.addView(buildSectionPicker())
+            return
+        }
+
+        container.addView(buildSectionHeader(section))
 
         val language = currentLanguageIsBangla
         if (language == null) {
-            container.addView(buildLanguagePicker())
+            container.addView(buildLanguagePicker(section))
             return
         }
 
         container.addView(buildBreadcrumb(language))
-        if (currentTab == TAB_BLOCKVEIL) {
+        if (section == SECTION_BLOCKVEIL) {
             buildBlockVeilDictionaryContent(language)
         } else {
             buildMyDictionaryContent(language)
         }
     }
 
-    private fun buildTabBar(): LinearLayout {
-        val outer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(12), dp(20), dp(4))
-        }
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        row.addView(buildTabSegment("BlockVeil Dictionary", TAB_BLOCKVEIL))
-        row.addView(buildTabSegment("My Dictionary", TAB_MY))
-        outer.addView(row)
-        return outer
-    }
+    // --- Step 1: section picker -------------------------------------------------------
 
-    private fun buildTabSegment(title: String, tab: String): LinearLayout {
-        val selected = currentTab == tab
-        val column = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                if (currentTab != tab) {
-                    currentTab = tab
-                    // Each tab always starts from its own language picker, so picking
-                    // English under one tab never silently carries into the other tab.
-                    currentLanguageIsBangla = null
-                    searchQuery = ""
-                    selectedLetter = null
-                    myDictScreen = MY_DICT_MENU
-                    render()
-                }
-            }
-        }
-        column.addView(TextView(this).apply {
-            text = title
-            textSize = 14f
-            setTextColor(if (selected) colorAccent else colorTextSecondary)
-            if (selected) setTypeface(typeface, android.graphics.Typeface.BOLD)
-            gravity = Gravity.CENTER
-            setPadding(dp(4), dp(10), dp(4), dp(10))
-        })
-        column.addView(View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(3))
-            setBackgroundColor(if (selected) colorAccent else Color.TRANSPARENT)
-        })
-        return column
-    }
-
-    private fun buildLanguagePicker(): LinearLayout {
+    private fun buildSectionPicker(): LinearLayout {
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(20), dp(20), dp(8))
+        }
+        val bundledTotal = DictionaryProvider.wordCount(false) + DictionaryProvider.wordCount(true)
+        column.addView(buildSectionCard(
+            "BlockVeil Dictionary",
+            "$bundledTotal bundled words \u00B7 read-only",
+            "\uD83D\uDCD6",
+            SECTION_BLOCKVEIL
+        ))
+        column.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(0, dp(12)) })
+        column.addView(buildSectionCard(
+            "My Dictionary",
+            "Your own words, optionally PIN-locked",
+            "\uD83D\uDC64",
+            SECTION_MY
+        ))
+        return column
+    }
+
+    private fun buildSectionCard(title: String, subtitle: String, icon: String, section: String): LinearLayout {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = cardDrawable(colorCard, 16f)
+            setPadding(dp(16), dp(18), dp(16), dp(18))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                currentSection = section
+                currentLanguageIsBangla = null
+                searchQuery = ""
+                selectedLetter = null
+                myDictScreen = MY_DICT_MENU
+                render()
+            }
+        }
+        row.addView(buildBadge(icon, colorAccent, colorBg, 44).apply { textSize = 17f })
+        val textColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = dp(14)
+            }
+        }
+        textColumn.addView(TextView(this).apply {
+            text = title
+            setTextColor(colorTextPrimary)
+            textSize = 16f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        textColumn.addView(TextView(this).apply {
+            text = subtitle
+            setTextColor(colorTextSecondary)
+            textSize = 12f
+        })
+        row.addView(textColumn)
+        row.addView(TextView(this).apply {
+            text = "\u203A"
+            setTextColor(colorTextSecondary)
+            textSize = 20f
+        })
+        return row
+    }
+
+    private fun buildSectionHeader(section: String): LinearLayout {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(20), dp(12), dp(20), dp(4))
+        }
+        row.addView(TextView(this).apply {
+            text = "\u2039"
+            setTextColor(colorAccent)
+            textSize = 20f
+            setPadding(dp(2), dp(2), dp(12), dp(2))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                currentSection = null
+                currentLanguageIsBangla = null
+                render()
+            }
+        })
+        row.addView(TextView(this).apply {
+            text = if (section == SECTION_BLOCKVEIL) "BlockVeil Dictionary" else "My Dictionary"
+            setTextColor(colorTextPrimary)
+            textSize = 16f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        return row
+    }
+
+    // --- Step 2: language picker -------------------------------------------------------
+
+    private fun buildLanguagePicker(section: String): LinearLayout {
+        val column = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(12), dp(20), dp(8))
         }
         column.addView(TextView(this).apply {
             text = "Choose a language"
@@ -136,15 +193,32 @@ class DictionarySettingsActivity : Activity() {
             textSize = 13f
             setPadding(dp(4), 0, 0, dp(12))
         })
-        column.addView(buildLanguageCard("English", DictionaryProvider.wordCount(false).toString() + " words", "EN", false))
-        if (currentTab == TAB_MY) column.addView(buildDictionaryLockRow(false))
+
+        // Point 1.2 fix: My Dictionary shows the user's own personal word counts here,
+        // never the bundled BlockVeil Dictionary totals.
+        val englishSubtitle = if (section == SECTION_MY)
+            UserDictionaryStore.getWords(this, false).size.toString() + " personal word(s)"
+        else
+            DictionaryProvider.wordCount(false).toString() + " words"
+        val banglaSubtitle = if (section == SECTION_MY)
+            UserDictionaryStore.getWords(this, true).size.toString() + " personal word(s)"
+        else
+            DictionaryProvider.wordCount(true).toString() + " words"
+
+        column.addView(buildLanguageCard("English", englishSubtitle, "EN", false, section))
         column.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(0, dp(12)) })
-        column.addView(buildLanguageCard("বাংলা", DictionaryProvider.wordCount(true).toString() + " words", "বা", true))
-        if (currentTab == TAB_MY) column.addView(buildDictionaryLockRow(true))
+        column.addView(buildLanguageCard("বাংলা", banglaSubtitle, "বা", true, section))
+
+        // Point 2: one combined lock for the whole My Dictionary section, shown once
+        // below both language buttons - not a separate lock per language.
+        if (section == SECTION_MY) {
+            column.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(0, dp(14)) })
+            column.addView(buildDictionarySecurityLockRow())
+        }
         return column
     }
 
-    private fun buildLanguageCard(title: String, subtitle: String, badge: String, isBangla: Boolean): LinearLayout {
+    private fun buildLanguageCard(title: String, subtitle: String, badge: String, isBangla: Boolean, section: String): LinearLayout {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -152,7 +226,7 @@ class DictionarySettingsActivity : Activity() {
             setPadding(dp(16), dp(16), dp(16), dp(16))
             isClickable = true
             isFocusable = true
-            setOnClickListener { openLanguage(isBangla) }
+            setOnClickListener { openLanguage(section, isBangla) }
         }
         row.addView(buildBadge(badge, colorAccent, colorBg, 44))
         val textColumn = LinearLayout(this).apply {
@@ -181,10 +255,10 @@ class DictionarySettingsActivity : Activity() {
         return row
     }
 
-    // Only "My Dictionary" can be PIN-locked, and only that tab checks the lock here.
-    private fun openLanguage(isBangla: Boolean) {
-        if (currentTab == TAB_MY && DictionaryLockStore.isLocked(this, isBangla)) {
-            promptPin(isBangla) { selectLanguage(isBangla) }
+    // Only My Dictionary can be locked, and one PIN gates both languages equally.
+    private fun openLanguage(section: String, isBangla: Boolean) {
+        if (section == SECTION_MY && DictionaryLockStore.isLocked(this)) {
+            promptPin { selectLanguage(isBangla) }
         } else {
             selectLanguage(isBangla)
         }
@@ -238,54 +312,66 @@ class DictionarySettingsActivity : Activity() {
         return row
     }
 
-    // --- Dictionary Lock (Point 8 / 8.1) ---------------------------------------------
+    // --- Dictionary Security Lock (Point 2) --------------------------------------------
 
-    private fun buildDictionaryLockRow(isBangla: Boolean): LinearLayout {
-        val locked = DictionaryLockStore.isLocked(this, isBangla)
+    private fun buildDictionarySecurityLockRow(): LinearLayout {
+        val locked = DictionaryLockStore.isLocked(this)
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(6), dp(8), dp(6), dp(4))
+            background = cardDrawable(colorCard, 16f)
+            setPadding(dp(16), dp(16), dp(16), dp(16))
             isClickable = true
             isFocusable = true
-            setOnClickListener { showLockManageDialog(isBangla) }
+            setOnClickListener { openDictionarySecurityLock() }
         }
-        row.addView(TextView(this).apply {
-            text = "\uD83D\uDD12"
-            textSize = 13f
-            setPadding(0, 0, dp(8), 0)
-        })
+        row.addView(buildBadge("\uD83D\uDD10", if (locked) 0x33A9E6C4.toInt() else colorBg, colorAccent, 40).apply { textSize = 15f })
         val textColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = dp(14)
+            }
         }
         textColumn.addView(TextView(this).apply {
-            text = "Dictionary Lock"
+            text = "Dictionary Security Lock"
             setTextColor(colorTextPrimary)
-            textSize = 13f
+            textSize = 15f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
         })
         textColumn.addView(TextView(this).apply {
-            text = if (locked) "On \u00B7 PIN protected" else "Off \u00B7 Tap to set a PIN"
+            text = if (locked) "On \u00B7 protects English & বাংলা together" else "Off \u00B7 tap to secure My Dictionary"
             setTextColor(colorTextSecondary)
             textSize = 11f
         })
         row.addView(textColumn)
+        row.addView(TextView(this).apply {
+            text = "\u203A"
+            setTextColor(colorTextSecondary)
+            textSize = 18f
+        })
         return row
     }
 
-    private fun showLockManageDialog(isBangla: Boolean) {
-        if (!DictionaryLockStore.isLocked(this, isBangla)) {
-            showSetPinDialog(isBangla)
+    private fun openDictionarySecurityLock() {
+        if (!DictionaryLockStore.isLocked(this)) {
+            showSetPinDialog(isChange = false)
             return
         }
-        promptPin(isBangla) {
+        val cooldown = DictionaryLockStore.cooldownSecondsRemaining(this)
+        if (cooldown > 0) {
+            Toast.makeText(this, "Too many attempts. Try again in ${cooldown}s.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        // Changing or removing the lock always requires the current PIN first -
+        // there is no other way in, by design.
+        promptPin {
             AlertDialog.Builder(this)
-                .setTitle("Dictionary Lock")
+                .setTitle("Dictionary Security Lock")
                 .setItems(arrayOf("Change PIN", "Remove Lock")) { _, which ->
                     if (which == 0) {
-                        showSetPinDialog(isBangla)
+                        showSetPinDialog(isChange = true)
                     } else {
-                        DictionaryLockStore.clearPin(this, isBangla)
+                        DictionaryLockStore.clearPin(this)
                         Toast.makeText(this, "Lock removed", Toast.LENGTH_SHORT).show()
                         render()
                     }
@@ -295,35 +381,57 @@ class DictionarySettingsActivity : Activity() {
         }
     }
 
-    private fun showSetPinDialog(isBangla: Boolean) {
-        val input = EditText(this).apply {
+    // Requires the PIN to be entered twice so a mistyped PIN can never lock the
+    // user out of their own dictionary.
+    private fun showSetPinDialog(isChange: Boolean) {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(8), dp(24), 0)
+        }
+        val input1 = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            hint = "4 to 6 digit PIN"
+            hint = "New PIN (4 to 8 digits)"
             setTextColor(colorTextPrimary)
             setHintTextColor(colorTextSecondary)
         }
-        val wrapper = FrameLayout(this).apply {
-            setPadding(dp(24), dp(8), dp(24), 0)
-            addView(input)
+        val input2 = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            hint = "Confirm PIN"
+            setTextColor(colorTextPrimary)
+            setHintTextColor(colorTextSecondary)
         }
+        layout.addView(input1)
+        layout.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(0, dp(10)) })
+        layout.addView(input2)
+
         AlertDialog.Builder(this)
-            .setTitle("Set Dictionary PIN")
-            .setView(wrapper)
+            .setTitle(if (isChange) "Change Dictionary PIN" else "Set Dictionary PIN")
+            .setMessage("One PIN protects both English and বাংলা My Dictionary.")
+            .setView(layout)
             .setPositiveButton("Save") { _, _ ->
-                val pin = input.text.toString()
-                if (pin.length < 4) {
-                    Toast.makeText(this, "PIN must be at least 4 digits", Toast.LENGTH_SHORT).show()
-                } else {
-                    DictionaryLockStore.setPin(this, isBangla, pin)
-                    Toast.makeText(this, "Dictionary locked", Toast.LENGTH_SHORT).show()
-                    render()
+                val pin1 = input1.text.toString()
+                val pin2 = input2.text.toString()
+                when {
+                    pin1.length < 4 -> Toast.makeText(this, "PIN must be at least 4 digits", Toast.LENGTH_SHORT).show()
+                    pin1.length > 8 -> Toast.makeText(this, "PIN must be at most 8 digits", Toast.LENGTH_SHORT).show()
+                    pin1 != pin2 -> Toast.makeText(this, "PINs do not match", Toast.LENGTH_SHORT).show()
+                    else -> {
+                        DictionaryLockStore.setPin(this, pin1)
+                        Toast.makeText(this, "Dictionary Security Lock is on", Toast.LENGTH_SHORT).show()
+                        render()
+                    }
                 }
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    private fun promptPin(isBangla: Boolean, onSuccess: () -> Unit) {
+    private fun promptPin(onSuccess: () -> Unit) {
+        val cooldown = DictionaryLockStore.cooldownSecondsRemaining(this)
+        if (cooldown > 0) {
+            Toast.makeText(this, "Too many attempts. Try again in ${cooldown}s.", Toast.LENGTH_SHORT).show()
+            return
+        }
         val input = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             hint = "Enter PIN"
@@ -335,14 +443,19 @@ class DictionarySettingsActivity : Activity() {
             addView(input)
         }
         AlertDialog.Builder(this)
-            .setTitle("Dictionary Locked")
-            .setMessage("Enter the PIN for your ${if (isBangla) "বাংলা" else "English"} My Dictionary")
+            .setTitle("My Dictionary is Locked")
+            .setMessage("Enter your Dictionary Security Lock PIN")
             .setView(wrapper)
             .setPositiveButton("Unlock") { _, _ ->
-                if (DictionaryLockStore.verifyPin(this, isBangla, input.text.toString())) {
+                if (DictionaryLockStore.verifyPin(this, input.text.toString())) {
                     onSuccess()
                 } else {
-                    Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show()
+                    val nowCooldown = DictionaryLockStore.cooldownSecondsRemaining(this)
+                    if (nowCooldown > 0) {
+                        Toast.makeText(this, "Too many attempts. Try again in ${nowCooldown}s.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this, "Incorrect PIN", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             .setNegativeButton("Cancel", null)
@@ -569,8 +682,6 @@ class DictionarySettingsActivity : Activity() {
 
         data class RowInfo(val icon: String, val title: String, val subtitle: String, val danger: Boolean)
 
-        // Dictionary Lock used to live here as a row; it now lives under the language
-        // picker on this tab instead (Point 8), so it is not listed below anymore.
         val rows = listOf(
             RowInfo("\uD83D\uDC41", "View My Words", "See every word you've added", false),
             RowInfo("\u2795", "Add New Word", "Add a word to your dictionary", false),
@@ -794,8 +905,8 @@ class DictionarySettingsActivity : Activity() {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     companion object {
-        private const val TAB_BLOCKVEIL = "blockveil"
-        private const val TAB_MY = "my"
+        private const val SECTION_BLOCKVEIL = "blockveil"
+        private const val SECTION_MY = "my"
         private const val MY_DICT_MENU = "menu"
         private const val MY_DICT_VIEW = "view"
         private const val MY_DICT_EDIT = "edit"
