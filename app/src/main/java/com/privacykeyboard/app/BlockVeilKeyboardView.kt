@@ -145,11 +145,11 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             val isFunction = functionKeyCodes.contains(code)
             val pressed = pressedKeyCode == code
 
+            // Shift always wears the same function-key background as Enter, both at
+            // rest and while active - only its icon (outline -> solid white) changes.
             val bgPaint = when {
-                isShiftKey && shiftActive && pressed -> functionPressedPaint
-                isShiftKey && shiftActive -> functionPaint
-                isShiftKey && pressed -> letterPressedPaint
-                isShiftKey -> letterPaint
+                isShiftKey && pressed -> functionPressedPaint
+                isShiftKey -> functionPaint
                 isFunction && pressed -> functionPressedPaint
                 isFunction -> functionPaint
                 pressed -> letterPressedPaint
