@@ -32,11 +32,15 @@ class MainActivity : Activity() {
         }
 
         findViewById<LinearLayout>(R.id.about_tile).setOnClickListener {
-            startActivity(
-                Intent(this, InfoActivity::class.java)
-                    .putExtra(InfoActivity.EXTRA_TITLE, "About")
-                    .putExtra(InfoActivity.EXTRA_BODY, InfoActivity.ABOUT_TEXT)
-            )
+            startActivity(Intent(this, AboutActivity::class.java))
+        }
+
+        // Theme and Customize are placeholders for now, no functionality yet.
+        findViewById<LinearLayout>(R.id.theme_tile).setOnClickListener {
+            android.widget.Toast.makeText(this, getString(R.string.coming_soon), android.widget.Toast.LENGTH_SHORT).show()
+        }
+        findViewById<LinearLayout>(R.id.customize_tile).setOnClickListener {
+            android.widget.Toast.makeText(this, getString(R.string.coming_soon), android.widget.Toast.LENGTH_SHORT).show()
         }
     }
 
