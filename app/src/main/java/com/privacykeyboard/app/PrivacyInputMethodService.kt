@@ -74,10 +74,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     private var capitalizeNext = true
     private var lastCommittedWasSpace = false
 
-    // A small, editable blocklist. Add more words as needed, one per entry.
-    private val offensiveWordsEn = setOf<String>()
-    private val offensiveWordsBn = setOf<String>()
-
     // Long-press hints on the top letter row (q..p -> 1..0), like a lightweight number row.
     private val topRowHints = mapOf(
         113 to "1", 119 to "2", 101 to "3", 114 to "4", 116 to "5",
@@ -138,8 +134,15 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
                 }
             }
         }
-        keyboardView.shiftIconRest = getDrawable(R.drawable.arrow_shape_up_24)
-        keyboardView.shiftIconActive = getDrawable(R.drawable.arrow_shape_up_24_filled)
+        // Shift icon is always white (outline at rest, solid fill when active), matching
+        // the Enter key's icon color. Background comes from the function-key paint in
+        // BlockVeilKeyboardView, same as Enter.
+        keyboardView.shiftIconRest = getDrawable(R.drawable.arrow_shape_up_24)?.mutate()?.apply {
+            setTint(android.graphics.Color.WHITE)
+        }
+        keyboardView.shiftIconActive = getDrawable(R.drawable.arrow_shape_up_24_filled)?.mutate()?.apply {
+            setTint(android.graphics.Color.WHITE)
+        }
 
         suggestionStrip = view.findViewById(R.id.suggestion_strip)
         textToolButton = view.findViewById(R.id.icon_text_tool)
@@ -212,11 +215,29 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         symbolsPageTwo = false
         showingNumpad = false
         numpadBangla = false
+        applyFieldTypeAutoDetect(info)
         updateNumpadDigitLabels()
         hideClipboardPanel()
         hideEmojiPanel()
         applySettings()
         applyKeyboardForMode()
+    }
+
+    // Looks at what kind of field is focused (PIN box, phone number, OTP, date, etc.)
+    // and jumps straight to the numeric keypad, the same way Gboard/Ridmik do. Only
+    // overrides the very first keyboard shown for this field; the user can still switch
+    // back to ABC manually and that choice is respected for the rest of the session.
+    private fun applyFieldTypeAutoDetect(info: EditorInfo?) {
+        val inputType = info?.inputType ?: EditorInfo.TYPE_NULL
+        val fieldClass = inputType and EditorInfo.TYPE_MASK_CLASS
+        val isNumericField = fieldClass == EditorInfo.TYPE_CLASS_NUMBER ||
+            fieldClass == EditorInfo.TYPE_CLASS_PHONE ||
+            fieldClass == EditorInfo.TYPE_CLASS_DATETIME
+
+        if (isNumericField) {
+            showingNumpad = true
+            numpadBangla = false
+        }
     }
 
     private fun applySettings() {
@@ -594,12 +615,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             rawWordBuffer.toString()
         }
 
-        var results = DictionaryProvider.suggestions(query, isBangla)
-
-        if (SettingsStore.getBoolean(this, SettingsStore.KEY_BLOCK_OFFENSIVE_WORDS, true)) {
-            val blocklist = if (isBangla) offensiveWordsBn else offensiveWordsEn
-            results = results.filterNot { blocklist.contains(it.lowercase()) }
-        }
+        val results = DictionaryProvider.suggestions(query, isBangla)
 
         listOf(suggestion1, suggestion2, suggestion3).forEachIndexed { index, tv ->
             tv.text = results.getOrNull(index) ?: ""
