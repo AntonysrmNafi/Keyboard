@@ -125,16 +125,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         super.onDestroy()
     }
 
-    private var cachedInputView: View? = null
-
     override fun onCreateInputView(): View {
-        // Point 1: Prevent dual keyboard issue - reuse cached view if it exists
-        if (cachedInputView != null) {
-            return cachedInputView!!
-        }
-
         val view = LayoutInflater.from(this).inflate(R.layout.input_view, null)
-        cachedInputView = view
 
         englishKeyboardPlain = Keyboard(this, R.xml.keys_layout_english)
         englishKeyboardWithNumRow = Keyboard(this, R.xml.keys_layout_english_numrow)
