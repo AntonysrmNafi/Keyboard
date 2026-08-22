@@ -107,6 +107,11 @@ class DictionaryLockManageActivity : Activity() {
 
     private fun toggleRow(icon: String, title: String, subtitle: String, initialState: Boolean, onChange: (Boolean) -> Unit): LinearLayout {
         var enabled = initialState
+        val toggle = TextView(this).apply {
+            text = if (enabled) "ON" else "OFF"
+            setTextColor(if (enabled) colorAccent else colorTextSecondary)
+            textSize = 13f
+        }
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -144,11 +149,6 @@ class DictionaryLockManageActivity : Activity() {
             textSize = 11f
         })
         row.addView(column)
-        val toggle = TextView(this).apply {
-            text = if (enabled) "ON" else "OFF"
-            setTextColor(if (enabled) colorAccent else colorTextSecondary)
-            textSize = 13f
-        }
         row.addView(toggle)
         return row
     }
