@@ -23,6 +23,7 @@ class DictionaryUnlockActivity : Activity() {
 
     private lateinit var container: LinearLayout
     private var screen = SCREEN_UNLOCK
+    private var isForLockManagement = false  // Point 1: forgot PIN only for lock management
 
     private val colorTextPrimary by lazy { resources.getColor(R.color.text_primary) }
     private val colorTextSecondary by lazy { resources.getColor(R.color.text_secondary) }
@@ -33,6 +34,9 @@ class DictionaryUnlockActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings_section)
+
+        // Point 1: check if coming from lock management or My Dictionary unlock
+        isForLockManagement = intent.getBooleanExtra("isForLockManagement", false)
 
         findViewById<TextView>(R.id.section_title).text = "My Dictionary"
         findViewById<TextView>(R.id.back_button).setOnClickListener {
@@ -107,8 +111,9 @@ class DictionaryUnlockActivity : Activity() {
             }
         })
 
-        // Point 1: Forgot PIN option - recovery email flow
-        if (DictionaryLockStore.hasRecoveryEmail(this)) {
+        // Point 1: Forgot PIN option only when unlocking Dictionary Security Lock management
+        // (not when unlocking My Dictionary to view/edit words)
+        if (isForLockManagement && DictionaryLockStore.hasRecoveryEmail(this)) {
             container.addView(linkText("Forgot PIN?") {
                 screen = SCREEN_RECOVER_EMAIL
                 render()
