@@ -824,6 +824,8 @@ class DictionarySettingsActivity : Activity() {
                 setTextColor(colorTextPrimary)
                 textSize = 15f
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                // Point 3: Enable text selection for long press + copy
+                isTextSelectable = true
             })
             if (editable) {
                 row.addView(TextView(this).apply {
