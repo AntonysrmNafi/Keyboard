@@ -102,6 +102,7 @@ class DictionaryLockManageActivity : Activity() {
                 .edit()
                 .putBoolean("allow_screenshots_my_dict", enabled)
                 .apply()
+            // Point 2: no app restart needed, settings take effect immediately
         })
     }
 
