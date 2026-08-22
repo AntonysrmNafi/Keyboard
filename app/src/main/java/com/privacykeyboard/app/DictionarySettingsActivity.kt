@@ -323,7 +323,40 @@ class DictionarySettingsActivity : Activity() {
         super.onResume()
         // Lock state / word counts may have changed in DictionaryLockManageActivity,
         // UserDictionaryStore, etc. while this screen was in the background.
+        // Point 7: Apply screenshot protection flag if in My Dictionary view
+        updateScreenshotProtection()
         render()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Point 4: if the phone was locked/turned off while the user was viewing
+        // or editing My Dictionary (language chosen, not at the section/language
+        // picker), auto-reset to the top level so they have to unlock again on
+        // onResume.
+        if (currentSection == SECTION_MY && currentLanguageIsBangla != null) {
+            currentLanguageIsBangla = null
+            myDictScreen = MY_DICT_MENU
+        }
+        // Point 7: Remove screenshot protection when leaving
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+    }
+
+    private fun updateScreenshotProtection() {
+        // Point 7: Enable screenshot/recording protection only when viewing or
+        // editing My Dictionary (English or বাংলা), if user has disabled screenshots.
+        val screenshotsAllowed = android.preference.PreferenceManager
+            .getDefaultSharedPreferences(this)
+            .getBoolean("allow_screenshots_my_dict", true)
+
+        if (currentSection == SECTION_MY && currentLanguageIsBangla != null && !screenshotsAllowed) {
+            window.setFlags(
+                android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                android.view.WindowManager.LayoutParams.FLAG_SECURE
+            )
+        } else {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        }
     }
 
     private fun selectLanguage(isBangla: Boolean) {
@@ -387,7 +420,8 @@ class DictionarySettingsActivity : Activity() {
             isFocusable = true
             setOnClickListener { openDictionarySecurityLock() }
         }
-        row.addView(buildBadge("\uD83D\uDD10", if (locked) 0x33A9E6C4.toInt() else colorBg, colorAccent, 40).apply { textSize = 15f })
+        // Point 1: icon changed to encrypted_24
+        row.addView(iconBadge("\uD83D\uDD10", 40))
         val textColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
@@ -412,6 +446,15 @@ class DictionarySettingsActivity : Activity() {
             textSize = 18f
         })
         return row
+    }
+
+    private fun iconBadge(icon: String, sizeDp: Int): TextView {
+        return TextView(this).apply {
+            text = icon
+            textSize = (sizeDp / 2.4f)
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(dp(sizeDp), dp(sizeDp))
+        }
     }
 
     // Not locked yet -> straight to the full-page "Set PIN" screen.
