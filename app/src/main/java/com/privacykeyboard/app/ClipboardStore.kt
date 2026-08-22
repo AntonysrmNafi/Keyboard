@@ -2,6 +2,7 @@ package com.privacykeyboard.app
 
 import android.content.Context
 import org.json.JSONArray
+import org.json.JSONObject
 
 // Keeps a small history of recently copied text and images/screenshots,
 // entirely on-device. Nothing leaves the phone; data stored as base64 in
@@ -25,7 +26,7 @@ object ClipboardStore {
     fun getItems(context: Context): List<ClipboardItem> {
         val raw = prefs(context).getString(KEY_ITEMS, null) ?: return emptyList()
         return try {
-            val array = org.json.JSONArray(raw)
+            val array = JSONArray(raw)
             (0 until array.length()).map { i ->
                 val obj = array.getJSONObject(i)
                 ClipboardItem(
@@ -86,9 +87,9 @@ object ClipboardStore {
     }
 
     private fun save(context: Context, items: List<ClipboardItem>) {
-        val array = org.json.JSONArray()
+        val array = JSONArray()
         items.forEach { item ->
-            val obj = org.json.JSONObject().apply {
+            val obj = JSONObject().apply {
                 put("id", item.id)
                 put("type", item.type)
                 if (item.text != null) put("text", item.text)
