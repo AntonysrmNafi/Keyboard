@@ -43,14 +43,24 @@ class ClipboardSettingsActivity : Activity() {
             return
         }
 
-        items.forEach { text ->
+        items.forEach { item ->
+            val displayText = when (item.type) {
+                "text" -> item.text ?: "(empty)"
+                "image" -> "\uD83D\uDCCE Image (${item.imageBase64?.length?.div(1000) ?: 0}KB)"
+                else -> "(unknown)"
+            }
             container.addView(TextView(this).apply {
-                this.text = text
+                text = displayText
                 setTextColor(resources.getColor(R.color.text_primary))
                 textSize = 14f
                 maxLines = 3
                 ellipsize = TextUtils.TruncateAt.END
                 setPadding(dp(20), dp(12), dp(20), dp(12))
+                setOnLongClickListener {
+                    ClipboardStore.removeItem(this@ClipboardSettingsActivity, item.id)
+                    refresh()
+                    true
+                }
             })
         }
 
