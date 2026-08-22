@@ -63,7 +63,7 @@ class DictionaryLockManageActivity : Activity() {
 
     private fun render() {
         container.removeAllViews()
-        container.setPadding(dp(24), dp(20), dp(24), dp(24))
+        container.setPadding(dp(24), dp(12), dp(24), dp(24))  // Top padding reduced 20→12
         when (screen) {
             SCREEN_SET_PIN -> renderSetPin(isChange = false)
             SCREEN_CHANGE_PIN -> renderSetPin(isChange = true)
@@ -94,7 +94,7 @@ class DictionaryLockManageActivity : Activity() {
         container.addView(toggleRow(
             "\uD83D\udccf",
             "Allow Screenshots",
-            "Enable or disable screenshots in My Dictionary (English & à¦¬à¦¾à¦‚à¦²à¦¾ screens only)",
+            "Enable or disable screenshots in My Dictionary (English & বাংলা screens only)",
             screenshotsAllowed
         ) { enabled ->
             android.preference.PreferenceManager
@@ -156,7 +156,7 @@ class DictionaryLockManageActivity : Activity() {
 
     private fun renderSetPin(isChange: Boolean) {
         container.addView(heading(if (isChange) "Change PIN/Pass" else "Set Dictionary PIN"))
-        container.addView(subtext("One PIN protects both English and à¦¬à¦¾à¦‚à¦²à¦¾ My Dictionary."))
+        container.addView(subtext("One PIN protects both English and বাংলা My Dictionary."))
 
         val input1 = pinField("New PIN (4 to 8 digits)")
         val input2 = pinField("Confirm PIN")
@@ -188,7 +188,7 @@ class DictionaryLockManageActivity : Activity() {
 
     private fun renderRemove() {
         container.addView(heading("Remove PIN/Pass"))
-        container.addView(subtext("This turns off the Dictionary Security Lock completely. Both English and à¦¬à¦¾à¦‚à¦²à¦¾ My Dictionary will open without a PIN afterwards."))
+        container.addView(subtext("This turns off the Dictionary Security Lock completely. Both English and বাংলা My Dictionary will open without a PIN afterwards."))
         container.addView(dangerButton("Remove Lock") {
             DictionaryLockStore.clearPin(this)
             Toast.makeText(this, "Lock removed", Toast.LENGTH_SHORT).show()
