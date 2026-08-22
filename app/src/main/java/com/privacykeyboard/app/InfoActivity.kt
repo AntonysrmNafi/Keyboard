@@ -15,7 +15,7 @@ class InfoActivity : Activity() {
         // Point 3: Enable text selection for long press + copy
         findViewById<TextView>(R.id.info_body).apply {
             text = intent.getStringExtra(EXTRA_BODY) ?: ""
-            isTextSelectable = true  // Android native selection UI (highlight + copy/paste)
+            setTextIsSelectable(true)  // Android native selection UI
         }
         findViewById<TextView>(R.id.back_button).setOnClickListener { finish() }
     }
