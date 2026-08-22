@@ -298,7 +298,9 @@ class DictionarySettingsActivity : Activity() {
     private fun openLanguage(section: String, isBangla: Boolean) {
         if (section == SECTION_MY && DictionaryLockStore.isLocked(this)) {
             pendingUnlockLanguage = isBangla
-            startActivityForResult(Intent(this, DictionaryUnlockActivity::class.java), REQUEST_UNLOCK_FOR_LANGUAGE)
+            val intent = Intent(this, DictionaryUnlockActivity::class.java)
+            intent.putExtra("isForLockManagement", false)  // Point 1: not for lock management
+            startActivityForResult(intent, REQUEST_UNLOCK_FOR_LANGUAGE)
         } else {
             selectLanguage(isBangla)
         }
@@ -471,7 +473,9 @@ class DictionarySettingsActivity : Activity() {
             Toast.makeText(this, "Too many attempts. Try again in ${cooldown}s.", Toast.LENGTH_SHORT).show()
             return
         }
-        startActivityForResult(Intent(this, DictionaryUnlockActivity::class.java), REQUEST_UNLOCK_FOR_MANAGE)
+        startActivityForResult(Intent(this, DictionaryUnlockActivity::class.java).apply {
+            putExtra("isForLockManagement", true)  // Point 1: for lock management - forgot PIN available
+        }, REQUEST_UNLOCK_FOR_MANAGE)
     }
 
     // --- BlockVeil Dictionary (bundled, read-only) -------------------------------------
