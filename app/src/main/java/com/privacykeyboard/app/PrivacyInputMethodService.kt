@@ -92,7 +92,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             val clip = clipboardManager?.primaryClip
             if (clip != null && clip.itemCount > 0) {
                 val text = clip.getItemAt(0).coerceToText(this)?.toString()
-                if (!text.isNullOrBlank()) ClipboardStore.addItem(this, text)
+                if (!text.isNullOrBlank()) ClipboardStore.addTextItem(this, text)
             }
         }
         clipboardListener = listener
@@ -705,17 +705,24 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             return
         }
 
-        items.forEach { text ->
+        items.forEach { item ->
+            val displayText = when (item.type) {
+                "text" -> item.text ?: "(empty)"
+                "image" -> "\uD83D\uDCCE Image"
+                else -> "(unknown)"
+            }
             clipboardList.addView(TextView(this).apply {
-                this.text = text
+                this.text = displayText
                 setTextColor(resources.getColor(R.color.ime_text_primary))
                 textSize = 14f
                 maxLines = 2
                 ellipsize = TextUtils.TruncateAt.END
                 setPadding(dpPx(20), dpPx(12), dpPx(20), dpPx(12))
                 setOnClickListener {
-                    currentInputConnection?.commitText(text, 1)
-                    hideClipboardPanel()
+                    if (item.type == "text" && item.text != null) {
+                        currentInputConnection?.commitText(item.text, 1)
+                        hideClipboardPanel()
+                    }
                 }
             })
             clipboardList.addView(View(this).apply {
