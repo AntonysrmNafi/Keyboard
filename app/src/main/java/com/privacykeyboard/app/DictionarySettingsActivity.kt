@@ -435,7 +435,7 @@ class DictionarySettingsActivity : Activity() {
             setTypeface(typeface, android.graphics.Typeface.BOLD)
         })
         textColumn.addView(TextView(this).apply {
-            text = if (locked) "On \u00B7 protects English & বাংলা together" else "Off \u00B7 tap to secure My Dictionary"
+            text = if (locked) "On \u00B7 Your words, locked away" else "Off \u00B7 tap to secure My Dictionary"
             setTextColor(colorTextSecondary)
             textSize = 11f
         })
