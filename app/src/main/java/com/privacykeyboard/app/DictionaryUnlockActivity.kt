@@ -106,19 +106,14 @@ class DictionaryUnlockActivity : Activity() {
                 render()
             }
         })
-
-        if (DictionaryLockStore.hasRecoveryEmail(this)) {
-            container.addView(linkText("Forgot PIN?") {
-                screen = SCREEN_RECOVER_EMAIL
-                render()
-            })
-        }
+        // Point 3: Forgot PIN option removed from here. Users can only recover
+        // their PIN from the Dictionary Security Lock management screen.
     }
 
     private fun renderRecoverEmail() {
         container.addView(iconBadge("\u2709\uFE0F"))
         container.addView(heading("Recover Access"))
-        container.addView(subtext("Enter the recovery email you set earlier. Since this app has no internet access, nothing is emailed - it just has to match."))
+        container.addView(subtext("Enter your recovery key (the email you set earlier). This app has no internet access, so nothing is emailed as an OTP - it just has to match exactly."))
 
         val cooldown = DictionaryLockStore.recoveryCooldownSecondsRemaining(this)
         val input = EditText(this).apply {
