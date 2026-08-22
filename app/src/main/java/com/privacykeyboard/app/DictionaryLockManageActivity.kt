@@ -74,10 +74,9 @@ class DictionaryLockManageActivity : Activity() {
     }
 
     private fun renderMenu() {
-        container.addView(subtext(
-            if (DictionaryLockStore.hasRecoveryEmail(this)) "Recovery email is set"
-            else "No recovery email set yet \u2014 add one so you can never be locked out"
-        ))
+        val emailStatus = if (DictionaryLockStore.hasRecoveryEmail(this)) "Recovery key is set"
+            else "No recovery key set yet"
+        container.addView(subtext(emailStatus))
 
         container.addView(menuRow("\uD83D\uDD11", "Change PIN/Pass", "Set a new PIN for My Dictionary") {
             screen = SCREEN_CHANGE_PIN; render()
@@ -85,14 +84,78 @@ class DictionaryLockManageActivity : Activity() {
         container.addView(menuRow("\uD83D\uDDD1", "Remove PIN/Pass", "Turn off the Dictionary Security Lock", danger = true) {
             screen = SCREEN_REMOVE; render()
         })
-        container.addView(menuRow("\u2709\uFE0F", "Set/Change Email", "Used only to recover a forgotten PIN") {
+        container.addView(menuRow("\u2709\uFE0F", "Set/Change Recovery Key", "Used only to recover a forgotten PIN") {
             screen = SCREEN_EMAIL; render()
         })
+        // Point 7: Allow Screenshots toggle
+        val screenshotsAllowed = android.preference.PreferenceManager
+            .getDefaultSharedPreferences(this)
+            .getBoolean("allow_screenshots_my_dict", true)
+        container.addView(toggleRow(
+            "\uD83D\udccf",
+            "Allow Screenshots",
+            "Enable or disable screenshots in My Dictionary (English & à¦¬à¦¾à¦‚à¦²à¦¾ screens only)",
+            screenshotsAllowed
+        ) { enabled ->
+            android.preference.PreferenceManager
+                .getDefaultSharedPreferences(this)
+                .edit()
+                .putBoolean("allow_screenshots_my_dict", enabled)
+                .apply()
+        })
+    }
+
+    private fun toggleRow(icon: String, title: String, subtitle: String, initialState: Boolean, onChange: (Boolean) -> Unit): LinearLayout {
+        var enabled = initialState
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = cardBg()
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            isClickable = true
+            isFocusable = true
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(12)
+            }
+            setOnClickListener {
+                enabled = !enabled
+                toggle.text = if (enabled) "ON" else "OFF"
+                toggle.setTextColor(if (enabled) colorAccent else colorTextSecondary)
+                onChange(enabled)
+            }
+        }
+        row.addView(TextView(this).apply {
+            text = icon
+            textSize = 18f
+            setPadding(0, 0, dp(14), 0)
+        })
+        val column = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        column.addView(TextView(this).apply {
+            text = title
+            setTextColor(colorTextPrimary)
+            textSize = 15f
+        })
+        column.addView(TextView(this).apply {
+            text = subtitle
+            setTextColor(colorTextSecondary)
+            textSize = 11f
+        })
+        row.addView(column)
+        val toggle = TextView(this).apply {
+            text = if (enabled) "ON" else "OFF"
+            setTextColor(if (enabled) colorAccent else colorTextSecondary)
+            textSize = 13f
+        }
+        row.addView(toggle)
+        return row
     }
 
     private fun renderSetPin(isChange: Boolean) {
         container.addView(heading(if (isChange) "Change PIN/Pass" else "Set Dictionary PIN"))
-        container.addView(subtext("One PIN protects both English and বাংলা My Dictionary."))
+        container.addView(subtext("One PIN protects both English and à¦¬à¦¾à¦‚à¦²à¦¾ My Dictionary."))
 
         val input1 = pinField("New PIN (4 to 8 digits)")
         val input2 = pinField("Confirm PIN")
@@ -124,7 +187,7 @@ class DictionaryLockManageActivity : Activity() {
 
     private fun renderRemove() {
         container.addView(heading("Remove PIN/Pass"))
-        container.addView(subtext("This turns off the Dictionary Security Lock completely. Both English and বাংলা My Dictionary will open without a PIN afterwards."))
+        container.addView(subtext("This turns off the Dictionary Security Lock completely. Both English and à¦¬à¦¾à¦‚à¦²à¦¾ My Dictionary will open without a PIN afterwards."))
         container.addView(dangerButton("Remove Lock") {
             DictionaryLockStore.clearPin(this)
             Toast.makeText(this, "Lock removed", Toast.LENGTH_SHORT).show()
@@ -134,12 +197,14 @@ class DictionaryLockManageActivity : Activity() {
     }
 
     private fun renderEmail() {
-        container.addView(heading("Set/Change Email"))
-        container.addView(subtext("If you ever forget your PIN, entering this exact email on the unlock page lets you set a new one. This app has no internet access, so nothing is ever actually emailed \u2014 pick something only you would know."))
-
         val current = DictionaryLockStore.getRecoveryEmail(this)
+        val isChange = current != null
+
+        container.addView(heading(if (isChange) "Change Recovery Key" else "Set Recovery Key"))
+        container.addView(subtext("This works as a recovery key, not an OTP - the app has no internet access, so nothing is ever actually emailed. If you forget your PIN, typing this exact address back on the unlock page is what lets you set a new one."))
+
         val input = EditText(this).apply {
-            hint = "Recovery email"
+            hint = "Recovery key (email format)"
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
             setTextColor(colorTextPrimary)
             setHintTextColor(colorTextSecondary)
@@ -153,22 +218,22 @@ class DictionaryLockManageActivity : Activity() {
         }
         container.addView(input)
 
-        container.addView(primaryButton("Save Email") {
+        container.addView(primaryButton(if (isChange) "Update Key" else "Set Key") {
             val email = input.text.toString().trim()
             if (email.isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                Toast.makeText(this, "Enter a valid email", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Enter a valid email format", Toast.LENGTH_SHORT).show()
             } else {
                 DictionaryLockStore.setRecoveryEmail(this, email)
-                Toast.makeText(this, "Recovery email saved", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, if (isChange) "Recovery key updated" else "Recovery key saved", Toast.LENGTH_SHORT).show()
                 screen = SCREEN_MENU
                 render()
             }
         })
 
         if (current != null) {
-            container.addView(linkText("Remove recovery email") {
+            container.addView(linkText("Remove recovery key") {
                 DictionaryLockStore.clearRecoveryEmail(this)
-                Toast.makeText(this, "Recovery email removed", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Recovery key removed", Toast.LENGTH_SHORT).show()
                 screen = SCREEN_MENU
                 render()
             })
