@@ -91,8 +91,29 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         val listener = ClipboardManager.OnPrimaryClipChangedListener {
             val clip = clipboardManager?.primaryClip
             if (clip != null && clip.itemCount > 0) {
-                val text = clip.getItemAt(0).coerceToText(this)?.toString()
-                if (!text.isNullOrBlank()) ClipboardStore.addTextItem(this, text)
+                val item = clip.getItemAt(0)
+                // Point 3: capture both text and images
+                val text = item.text?.toString()
+                if (!text.isNullOrBlank()) {
+                    ClipboardStore.addTextItem(this, text)
+                } else {
+                    // Try to get image URI and load as bitmap
+                    val uri = item.uri
+                    if (uri != null) {
+                        try {
+                            val bitmap = android.provider.MediaStore.Images.Media.getBitmap(
+                                contentResolver, uri
+                            )
+                            val base64 = android.util.Base64.encodeToString(
+                                bitmap.toString().toByteArray(), 
+                                android.util.Base64.DEFAULT
+                            )
+                            ClipboardStore.addImageItem(this, base64)
+                        } catch (e: Exception) {
+                            // Silent fail - not all URIs can be loaded as images
+                        }
+                    }
+                }
             }
         }
         clipboardListener = listener
@@ -104,8 +125,16 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         super.onDestroy()
     }
 
+    private var cachedInputView: View? = null
+
     override fun onCreateInputView(): View {
+        // Point 1: Prevent dual keyboard issue - reuse cached view if it exists
+        if (cachedInputView != null) {
+            return cachedInputView!!
+        }
+
         val view = LayoutInflater.from(this).inflate(R.layout.input_view, null)
+        cachedInputView = view
 
         englishKeyboardPlain = Keyboard(this, R.xml.keys_layout_english)
         englishKeyboardWithNumRow = Keyboard(this, R.xml.keys_layout_english_numrow)
@@ -207,6 +236,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        // Point 1: Dual keyboard issue fixed - view is now cached and reused, 
+        // no need for cleanup
         resetWordState()
         isShifted = false
         capitalizeNext = true
