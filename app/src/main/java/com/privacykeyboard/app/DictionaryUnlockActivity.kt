@@ -106,8 +106,14 @@ class DictionaryUnlockActivity : Activity() {
                 render()
             }
         })
-        // Point 3: Forgot PIN option removed from here. Users can only recover
-        // their PIN from the Dictionary Security Lock management screen.
+
+        // Point 1: Forgot PIN option - recovery email flow
+        if (DictionaryLockStore.hasRecoveryEmail(this)) {
+            container.addView(linkText("Forgot PIN?") {
+                screen = SCREEN_RECOVER_EMAIL
+                render()
+            })
+        }
     }
 
     private fun renderRecoverEmail() {
