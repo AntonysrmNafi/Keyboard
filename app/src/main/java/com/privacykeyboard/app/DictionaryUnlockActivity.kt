@@ -33,6 +33,11 @@ class DictionaryUnlockActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Point 3: leave the soft keyboard's visibility exactly as it already was
+        // instead of letting Android force a hide+reshow during this Activity
+        // transition - that forced re-trigger is what caused the keyboard to
+        // visibly flash/appear twice when unlocking My Dictionary.
+        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED)
         setContentView(R.layout.activity_settings_section)
 
         // Point 1: check if coming from lock management or My Dictionary unlock
