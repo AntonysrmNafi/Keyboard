@@ -38,6 +38,17 @@ class DictionaryUnlockActivity : Activity() {
         // transition - that forced re-trigger is what caused the keyboard to
         // visibly flash/appear twice when unlocking My Dictionary.
         window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED)
+        // Point 2: Allow Screenshots toggle now also covers the Dictionary
+        // Security Lock unlock screen itself, not just the word list after unlocking.
+        val screenshotsAllowed = android.preference.PreferenceManager
+            .getDefaultSharedPreferences(this)
+            .getBoolean("allow_screenshots_my_dict", true)
+        if (!screenshotsAllowed) {
+            window.setFlags(
+                android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                android.view.WindowManager.LayoutParams.FLAG_SECURE
+            )
+        }
         setContentView(R.layout.activity_settings_section)
 
         // Point 1: check if coming from lock management or My Dictionary unlock
