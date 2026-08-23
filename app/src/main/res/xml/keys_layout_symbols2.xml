@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Point 4: keyHeight tuned so total height (4 rows + gaps) matches the main
+     5-row keyboard's total height - switching between symbols pages / back to
+     the main keyboard no longer resizes the keyboard window. -->
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
     android:keyWidth="10%p"
-    android:keyHeight="50dp"
+    android:keyHeight="59dp"
     android:horizontalGap="2%p"
     android:verticalGap="6dp">
 
