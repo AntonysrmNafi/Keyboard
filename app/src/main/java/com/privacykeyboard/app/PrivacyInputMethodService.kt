@@ -124,16 +124,21 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     override fun onDestroy() {
         clipboardListener?.let { clipboardManager?.removePrimaryClipChangedListener(it) }
+        cachedInputView = null
         super.onDestroy()
     }
 
+    private var cachedInputView: View? = null
+
     override fun onCreateInputView(): View {
-        // Point 3: Prevent dual keyboard - if view already created, return it
-        if (::keyboardView.isInitialized && keyboardView.parent != null) {
-            return keyboardView.parent.parent as View
-        }
+        // Point 3: Dual keyboard fix - always return the SAME view instance.
+        // Recreating the view every time (e.g. after DictionaryUnlockActivity
+        // closes and the IME window is asked for its input view again) is what
+        // caused two keyboards to appear stacked on top of each other.
+        cachedInputView?.let { return it }
 
         val view = LayoutInflater.from(this).inflate(R.layout.input_view, null)
+        cachedInputView = view
 
         englishKeyboardPlain = Keyboard(this, R.xml.keys_layout_english)
         englishKeyboardWithNumRow = Keyboard(this, R.xml.keys_layout_english_numrow)
@@ -208,6 +213,10 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
         icon123Button = view.findViewById(R.id.icon_123_top)
         icon123Button.setOnClickListener {
+            // Point 4: must hide clipboard/emoji panel first, otherwise keyboardView
+            // stays invisible underneath even though the numpad keyboard is applied
+            hideClipboardPanel()
+            hideEmojiPanel()
             showingNumpad = true
             showingSymbols = false
             numpadBangla = false
@@ -669,9 +678,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         refreshClipboardList()
         clipboardPanel.visibility = View.VISIBLE
         keyboardView.visibility = View.INVISIBLE
-        // Point 4: Keep toolbar buttons clickable when clipboard panel is visible
-        icon123Button.bringToFront()
-        iconEmojiButton.bringToFront()
     }
 
     private fun hideClipboardPanel() {
@@ -685,9 +691,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         emojiPanel.visibility = View.VISIBLE
         keyboardView.visibility = View.INVISIBLE
         suggestionStrip.visibility = View.GONE
-        // Point 4: Keep toolbar buttons clickable when emoji panel is visible
-        icon123Button.bringToFront()
-        iconEmojiButton.bringToFront()
     }
 
     private fun hideEmojiPanel() {
