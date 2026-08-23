@@ -101,6 +101,8 @@ class AboutActivity : Activity() {
             setTextColor(colorTextPrimary)
             textSize = 15f
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            // Point 2: Enable text selection for long press
+            setTextIsSelectable(true)
         })
         row.addView(TextView(this).apply {
             text = "\u203A"
