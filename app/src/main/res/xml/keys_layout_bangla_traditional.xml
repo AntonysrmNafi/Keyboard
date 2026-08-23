@@ -5,7 +5,21 @@
     android:horizontalGap="2%p"
     android:verticalGap="6dp">
 
-    <!-- Row 1: QWERTY (exact copy from English) -->
+    <!-- Row 0: Numbers (1234567890) -->
+    <Row>
+        <Key android:codes="49" android:keyLabel="1" />
+        <Key android:codes="50" android:keyLabel="2" />
+        <Key android:codes="51" android:keyLabel="3" />
+        <Key android:codes="52" android:keyLabel="4" />
+        <Key android:codes="53" android:keyLabel="5" />
+        <Key android:codes="54" android:keyLabel="6" />
+        <Key android:codes="55" android:keyLabel="7" />
+        <Key android:codes="56" android:keyLabel="8" />
+        <Key android:codes="57" android:keyLabel="9" />
+        <Key android:codes="48" android:keyLabel="0" />
+    </Row>
+
+    <!-- Row 1: QWERTY -->
     <Row>
         <Key android:codes="113" android:keyLabel="q" />
         <Key android:codes="119" android:keyLabel="w" />
@@ -19,7 +33,7 @@
         <Key android:codes="112" android:keyLabel="p" />
     </Row>
 
-    <!-- Row 2: ASDFGH (exact copy from English, with side spacers) -->
+    <!-- Row 2: ASDFGH (with side spacers) -->
     <Row>
         <Key android:codes="-99" android:keyLabel="" android:keyWidth="5%p" />
         <Key android:codes="97" android:keyLabel="a" />
@@ -34,7 +48,7 @@
         <Key android:codes="-99" android:keyLabel="" android:keyWidth="5%p" />
     </Row>
 
-    <!-- Row 3: Shift + ZXCVBN + Backspace (exact copy from English) -->
+    <!-- Row 3: Shift + ZXCVBN + Backspace -->
     <Row>
         <Key android:codes="-1" android:keyLabel="&#8679;" android:keyWidth="15%p" android:isModifier="true" android:isSticky="true" />
         <Key android:codes="122" android:keyLabel="z" />
@@ -47,7 +61,7 @@
         <Key android:codes="-5" android:keyLabel="&#9003;" android:keyWidth="15%p" />
     </Row>
 
-    <!-- Row 4: Bottom row (exact copy from English) -->
+    <!-- Row 4: Bottom row -->
     <Row>
         <Key android:codes="-20" android:keyLabel="\?123" android:keyWidth="13%p" />
         <Key android:codes="-30" android:keyLabel="&#128522;" android:keyWidth="12%p" />
