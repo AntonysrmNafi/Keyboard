@@ -30,7 +30,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     private lateinit var suggestionsGroup: LinearLayout
     private lateinit var clipboardButton: android.widget.ImageView
     private lateinit var clipboardPanel: LinearLayout
-    private lateinit var clipboardList: LinearLayout
+    private lateinit var icon123Button: View
+    private lateinit var iconEmojiButton: View
     private lateinit var emojiPanel: LinearLayout
     private lateinit var emojiCategoryRow: LinearLayout
 
@@ -126,6 +127,11 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     }
 
     override fun onCreateInputView(): View {
+        // Point 3: Prevent dual keyboard - if view already created, return it
+        if (::keyboardView.isInitialized && keyboardView.parent != null) {
+            return keyboardView.parent.parent as View
+        }
+
         val view = LayoutInflater.from(this).inflate(R.layout.input_view, null)
 
         englishKeyboardPlain = Keyboard(this, R.xml.keys_layout_english)
@@ -199,7 +205,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             startActivity(intent)
         }
 
-        view.findViewById<TextView>(R.id.icon_123_top).setOnClickListener {
+        icon123Button = view.findViewById(R.id.icon_123_top)
+        icon123Button.setOnClickListener {
             showingNumpad = true
             showingSymbols = false
             numpadBangla = false
@@ -208,7 +215,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             applyKeyboardForMode()
         }
 
-        view.findViewById<android.widget.ImageView>(R.id.icon_emoji_top).setOnClickListener { showEmojiPanel() }
+        iconEmojiButton = view.findViewById(R.id.icon_emoji_top)
+        iconEmojiButton.setOnClickListener { showEmojiPanel() }
 
         emojiPanel = view.findViewById(R.id.emoji_panel)
         emojiCategoryRow = view.findViewById(R.id.emoji_category_row)
@@ -660,6 +668,9 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         refreshClipboardList()
         clipboardPanel.visibility = View.VISIBLE
         keyboardView.visibility = View.INVISIBLE
+        // Point 4: Keep toolbar buttons clickable when clipboard panel is visible
+        icon123Button.bringToFront()
+        iconEmojiButton.bringToFront()
     }
 
     private fun hideClipboardPanel() {
@@ -673,6 +684,9 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         emojiPanel.visibility = View.VISIBLE
         keyboardView.visibility = View.INVISIBLE
         suggestionStrip.visibility = View.GONE
+        // Point 4: Keep toolbar buttons clickable when emoji panel is visible
+        icon123Button.bringToFront()
+        iconEmojiButton.bringToFront()
     }
 
     private fun hideEmojiPanel() {
