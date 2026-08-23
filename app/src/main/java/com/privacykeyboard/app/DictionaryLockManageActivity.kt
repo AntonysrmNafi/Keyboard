@@ -32,6 +32,8 @@ class DictionaryLockManageActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Point 3: prevent forced IME hide+reshow flash during transitions
+        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED)
         setContentView(R.layout.activity_settings_section)
 
         findViewById<TextView>(R.id.section_title).text = "Dictionary Security Lock"
