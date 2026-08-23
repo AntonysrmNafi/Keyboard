@@ -49,6 +49,8 @@ class DictionarySettingsActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Point 3: prevent forced IME hide+reshow flash during transitions
+        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED)
         setContentView(R.layout.activity_settings_section)
 
         DictionaryProvider.load(this)
@@ -96,6 +98,10 @@ class DictionarySettingsActivity : Activity() {
     }
 
     private fun render() {
+        // Point 2: re-check every time the screen changes (not just onResume),
+        // since navigating in/out of My Dictionary happens via internal state
+        // changes, not activity pause/resume.
+        updateScreenshotProtection()
         container.removeAllViews()
         container.setPadding(0, dp(4), 0, dp(24))
 
