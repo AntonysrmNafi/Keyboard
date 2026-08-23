@@ -7,6 +7,12 @@
          by Android itself, not just app logic. -->
     <!-- VIBRATE is only used when the user turns on "Vibrate on keypress" in Preferences -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Point 4: needed to detect and read newly taken screenshots so they can be
+         added to the on-device clipboard history. Android does not put screenshots
+         on the system clipboard by itself, so this is the only reliable way to
+         notice a new screenshot; everything stays on-device, never uploaded. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 
     <application
         android:label="@string/app_name"
