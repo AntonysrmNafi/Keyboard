@@ -94,22 +94,27 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             val clip = clipboardManager?.primaryClip
             if (clip != null && clip.itemCount > 0) {
                 val item = clip.getItemAt(0)
-                // Point 3: capture both text and images
                 val text = item.text?.toString()
                 if (!text.isNullOrBlank()) {
                     ClipboardStore.addTextItem(this, text)
                 } else {
-                    // Try to get image URI and load as bitmap
+                    // Point 5: was previously encoding bitmap.toString() (garbage
+                    // object reference text) instead of the actual image bytes -
+                    // that's why nothing usable ever showed up for copied/shared
+                    // screenshots. Now properly compresses the real pixel data.
                     val uri = item.uri
                     if (uri != null) {
                         try {
                             val bitmap = android.provider.MediaStore.Images.Media.getBitmap(
                                 contentResolver, uri
                             )
+                            val outputStream = java.io.ByteArrayOutputStream()
+                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, outputStream)
                             val base64 = android.util.Base64.encodeToString(
-                                bitmap.toString().toByteArray(), 
+                                outputStream.toByteArray(),
                                 android.util.Base64.DEFAULT
                             )
+                            bitmap.recycle()
                             ClipboardStore.addImageItem(this, base64)
                         } catch (e: Exception) {
                             // Silent fail - not all URIs can be loaded as images
@@ -206,6 +211,10 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         clipboardButton.setOnClickListener { toggleClipboardPanel() }
 
         view.findViewById<android.widget.ImageView>(R.id.settings_header_button).setOnClickListener {
+            // Point 3: explicitly hide the IME window before launching Settings,
+            // otherwise the keyboard window stays floating on top of the newly
+            // opened Settings screen since starting a new task doesn't dismiss it.
+            requestHideSelf(0)
             val intent = android.content.Intent(this, MainActivity::class.java)
             intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
             startActivity(intent)
@@ -285,8 +294,12 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         // isPreviewEnabled is force-disabled inside BlockVeilKeyboardView itself (crash safety,
         // see its init block). Our own pressed-key highlight color already gives feedback,
         // so the "Popup on keypress" setting no longer needs to toggle the stock popup.
-        val showSuggestions = SettingsStore.getBoolean(this, SettingsStore.KEY_SHOW_SUGGESTIONS, true)
-        suggestionStrip.visibility = if (showSuggestions) View.VISIBLE else View.GONE
+        // Point 6: previously this hid the ENTIRE top strip (including the T/emoji/
+        // clipboard/123/settings toolbar icons) when suggestions were turned off.
+        // The strip row itself must always stay visible; only the suggestion words
+        // next to the T icon should be affected, handled in updateTopStripVisibility().
+        suggestionStrip.visibility = View.VISIBLE
+        updateTopStripVisibility()
 
         keyboardView.spaceSwipeEnabled = SettingsStore.getBoolean(this, SettingsStore.KEY_SPACE_CURSOR_ENABLED, true)
         val sensitivityLevel = SettingsStore.getInt(this, SettingsStore.KEY_SPACE_CURSOR_SPEED, 1)
@@ -332,7 +345,12 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     }
 
     private fun updateTopStripVisibility() {
-        val showToolbar = rawWordBuffer.isEmpty() || forceToolbar
+        if (!::toolbarIconsGroup.isInitialized) return
+        // Point 6: if "Show Suggestions" is turned off, always keep the toolbar
+        // icons visible and never switch over to the suggestion words - the strip
+        // itself is unaffected, only which of these two groups it displays.
+        val showSuggestions = SettingsStore.getBoolean(this, SettingsStore.KEY_SHOW_SUGGESTIONS, true)
+        val showToolbar = !showSuggestions || rawWordBuffer.isEmpty() || forceToolbar
         toolbarIconsGroup.visibility = if (showToolbar) View.VISIBLE else View.GONE
         suggestionsGroup.visibility = if (showToolbar) View.GONE else View.VISIBLE
     }
@@ -697,8 +715,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         if (!::emojiPanel.isInitialized) return
         emojiPanel.visibility = View.GONE
         keyboardView.visibility = View.VISIBLE
-        val showSuggestions = SettingsStore.getBoolean(this, SettingsStore.KEY_SHOW_SUGGESTIONS, true)
-        suggestionStrip.visibility = if (showSuggestions) View.VISIBLE else View.GONE
+        suggestionStrip.visibility = View.VISIBLE
+        updateTopStripVisibility()
     }
 
     private fun buildEmojiCategoryIcons() {
