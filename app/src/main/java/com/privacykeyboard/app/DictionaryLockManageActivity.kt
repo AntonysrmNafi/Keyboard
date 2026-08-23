@@ -12,8 +12,6 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.widget.SwitchCompat
-import androidx.core.widget.CompoundButtonCompat
 
 // Full-screen Dictionary Security Lock management (Point 1 / 1.2) - a whole page for
 // every step, never a popup. This activity is only ever reached either with no PIN
@@ -145,33 +143,32 @@ class DictionaryLockManageActivity : Activity() {
         })
         row.addView(column)
 
-        // Point 3: iOS style toggle (SwitchCompat - Green ON, Gray OFF)
-        val toggle = SwitchCompat(this).apply {
+        // Point 2: iOS style toggle - using framework Switch (app theme is
+        // android:Theme.Material, not AppCompat, so SwitchCompat could not
+        // render correctly and stayed invisible). Switch works natively.
+        val toggle = android.widget.Switch(this).apply {
             isChecked = initialState
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, 
+                LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                marginStart = dp(16)  // Space from title
-            }
-            setPadding(0, dp(4), 0, dp(4))  // Vertical padding for better visibility
-            
+            )
+            showText = false
+            text = ""
+
             // Track color: Green when ON, Gray when OFF
             val trackColor = android.content.res.ColorStateList(
                 arrayOf(
                     intArrayOf(android.R.attr.state_checked),
                     intArrayOf()
                 ),
-                intArrayOf(colorAccent, 0xFF9E9E9E.toInt())  // Green ON, Gray OFF
+                intArrayOf(colorAccent, 0xFF9E9E9E.toInt())
             )
-            
-            // Thumb color: White circle
+            // Thumb color: White circle always
             val thumbColor = android.content.res.ColorStateList.valueOf(0xFFFFFFFF.toInt())
-            
-            CompoundButtonCompat.setButtonTintList(this, trackColor)
-            setTextOn("")
-            setTextOff("")
-            
+
+            trackTintList = trackColor
+            thumbTintList = thumbColor
+
             setOnCheckedChangeListener { _, isChecked ->
                 onChange(isChecked)
             }
