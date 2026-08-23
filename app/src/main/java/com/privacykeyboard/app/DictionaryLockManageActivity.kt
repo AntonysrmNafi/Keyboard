@@ -126,10 +126,12 @@ class DictionaryLockManageActivity : Activity() {
             setPadding(0, 0, dp(14), 0)
         })
 
-        // Title + Subtitle
+        // Title + Subtitle (reduced width to give space for toggle)
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                rightMargin = dp(12)  // Space before toggle
+            }
         }
         column.addView(TextView(this).apply {
             text = title
@@ -139,7 +141,7 @@ class DictionaryLockManageActivity : Activity() {
         column.addView(TextView(this).apply {
             text = subtitle
             setTextColor(colorTextSecondary)
-            textSize = 11f
+            textSize = 10f  // Reduced from 11f
         })
         row.addView(column)
 
