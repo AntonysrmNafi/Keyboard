@@ -21,11 +21,6 @@ class MainActivity : Activity() {
         window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED)
         setContentView(R.layout.activity_main)
 
-        // Point 4: the keyboard service can't show a permission dialog itself, so
-        // request the image-read permission here (needed only to notice newly
-        // taken screenshots for the on-device clipboard history).
-        requestImagePermissionIfNeeded()
-
         findViewById<Button>(R.id.enable_button).setOnClickListener {
             startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
         }
@@ -55,19 +50,6 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         updateStatus()
-    }
-
-    private fun requestImagePermissionIfNeeded() {
-        val permission = if (android.os.Build.VERSION.SDK_INT >= 33) {
-            android.Manifest.permission.READ_MEDIA_IMAGES
-        } else {
-            android.Manifest.permission.READ_EXTERNAL_STORAGE
-        }
-        if (androidx.core.content.ContextCompat.checkSelfPermission(this, permission)
-            != android.content.pm.PackageManager.PERMISSION_GRANTED
-        ) {
-            androidx.core.app.ActivityCompat.requestPermissions(this, arrayOf(permission), 1001)
-        }
     }
 
     private fun updateStatus() {
