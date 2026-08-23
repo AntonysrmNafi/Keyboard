@@ -33,6 +33,8 @@ class AboutActivity : Activity() {
             textSize = 20f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             setPadding(dp(20), dp(4), dp(20), dp(6))
+            // Point 4: Enable text selection for long press
+            setTextIsSelectable(true)
         })
 
         container.addView(TextView(this).apply {
@@ -41,6 +43,8 @@ class AboutActivity : Activity() {
             textSize = 14f
             setLineSpacing(dp(6).toFloat(), 1f)
             setPadding(dp(20), 0, dp(20), dp(20))
+            // Point 4: Enable text selection for long press
+            setTextIsSelectable(true)
         })
 
         container.addView(buildAboutButton("\uD83C\uDF10", "BlockVeil Keyboard is open source!") {
