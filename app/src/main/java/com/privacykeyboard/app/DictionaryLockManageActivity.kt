@@ -146,7 +146,13 @@ class DictionaryLockManageActivity : Activity() {
         // Point 3: iOS style toggle (SwitchCompat - Green ON, Gray OFF)
         val toggle = SwitchCompat(this).apply {
             isChecked = initialState
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, 
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                marginStart = dp(16)  // Space from title
+            }
+            setPadding(0, dp(4), 0, dp(4))  // Vertical padding for better visibility
             
             // Track color: Green when ON, Gray when OFF
             val trackColor = android.content.res.ColorStateList(
