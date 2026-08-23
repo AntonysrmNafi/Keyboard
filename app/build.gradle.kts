@@ -44,4 +44,7 @@ dependencies {
     // Security Lock PIN hash/salt, recovery email, My Dictionary words) with a key
     // held inside the device's hardware-backed Android Keystore.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    
+    // Point 3: AppCompat for SwitchCompat (iOS style toggle in Dictionary Security Lock)
+    implementation("androidx.appcompat:appcompat:1.6.1")
 }
