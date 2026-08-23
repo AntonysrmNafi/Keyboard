@@ -84,8 +84,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     private var clipboardManager: ClipboardManager? = null
     private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
-    private var screenshotObserver: android.database.ContentObserver? = null
-    private var lastSeenScreenshotUri: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -106,76 +104,13 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         }
         clipboardListener = listener
         clipboardManager?.addPrimaryClipChangedListener(listener)
-
-        // Point 4: Android does NOT put screenshots on the system clipboard by
-        // itself - the clipboard listener above only fires for an EXPLICIT copy
-        // action. To actually catch a screenshot the moment it's taken, watch
-        // MediaStore for new images and pick out ones saved to the Screenshots
-        // folder. Everything stays on-device (same as the rest of clipboard
-        // history) - nothing is uploaded anywhere.
-        registerScreenshotObserver()
     }
 
-    private fun hasImageReadPermission(): Boolean {
-        val permission = if (android.os.Build.VERSION.SDK_INT >= 33) {
-            android.Manifest.permission.READ_MEDIA_IMAGES
-        } else {
-            android.Manifest.permission.READ_EXTERNAL_STORAGE
-        }
-        return androidx.core.content.ContextCompat.checkSelfPermission(this, permission) ==
-            android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun registerScreenshotObserver() {
-        if (!hasImageReadPermission()) return
-        val observer = object : android.database.ContentObserver(android.os.Handler(mainLooper)) {
-            override fun onChange(selfChange: Boolean, uri: android.net.Uri?) {
-                super.onChange(selfChange, uri)
-                if (uri == null) return
-                checkIfNewImageIsScreenshot(uri)
-            }
-        }
-        screenshotObserver = observer
-        contentResolver.registerContentObserver(
-            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            true,
-            observer
-        )
-    }
-
-    private fun checkIfNewImageIsScreenshot(uri: android.net.Uri) {
-        try {
-            val projection = arrayOf(
-                android.provider.MediaStore.Images.Media._ID,
-                android.provider.MediaStore.Images.Media.DISPLAY_NAME,
-                android.provider.MediaStore.Images.Media.DATE_ADDED
-            )
-            contentResolver.query(
-                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                projection, null, null,
-                "${android.provider.MediaStore.Images.Media.DATE_ADDED} DESC LIMIT 1"
-            )?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val id = cursor.getLong(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media._ID))
-                    val name = cursor.getString(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media.DISPLAY_NAME)) ?: ""
-                    val itemUri = android.content.ContentUris.withAppendedId(
-                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id
-                    )
-                    val itemUriString = itemUri.toString()
-                    // Avoid re-adding the same screenshot twice (onChange can fire
-                    // more than once for the same insert while the file finishes writing).
-                    if (itemUriString == lastSeenScreenshotUri) return
-                    if (name.contains("Screenshot", ignoreCase = true)) {
-                        lastSeenScreenshotUri = itemUriString
-                        storeImageFromUri(itemUri)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            // Silent fail - permission revoked mid-session, or store query error
-        }
-    }
-
+    // Point 1: automatic screenshot-detection (MediaStore ContentObserver + the
+    // storage permission it required) has been removed entirely per request -
+    // no permission prompt will be shown. This still captures an image the
+    // normal way: whenever something is explicitly copied to the system
+    // clipboard (e.g. long-press an image -> Copy, or Share -> Copy).
     private fun storeImageFromUri(uri: android.net.Uri) {
         try {
             val bitmap = android.provider.MediaStore.Images.Media.getBitmap(contentResolver, uri)
@@ -194,7 +129,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     override fun onDestroy() {
         clipboardListener?.let { clipboardManager?.removePrimaryClipChangedListener(it) }
-        screenshotObserver?.let { contentResolver.unregisterContentObserver(it) }
         cachedInputView = null
         super.onDestroy()
     }
@@ -319,6 +253,12 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         return view
     }
 
+    // Point 3: some devices render a separate "extract view" (fullscreen editing
+    // strip) above the normal keyboard in certain apps/orientations, which can
+    // look exactly like "two keyboards stacked". Force this off unconditionally -
+    // this custom keyboard never needs it.
+    override fun onEvaluateFullscreenMode(): Boolean = false
+
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         // Point 1: Dual keyboard issue fixed - view is now cached and reused, 
@@ -337,6 +277,15 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         hideEmojiPanel()
         applySettings()
         applyKeyboardForMode()
+    }
+
+    override fun onFinishInputView(finishingInput: Boolean) {
+        super.onFinishInputView(finishingInput)
+        // Point 3: make sure no leftover panel/state carries into the next time
+        // the keyboard is shown (e.g. right after returning from an Activity we
+        // launched, like Settings or Dictionary Unlock).
+        hideClipboardPanel()
+        hideEmojiPanel()
     }
 
     // Looks at what kind of field is focused (PIN box, phone number, OTP, date, etc.)
