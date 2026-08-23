@@ -12,6 +12,8 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.widget.SwitchCompat
+import androidx.core.widget.CompoundButtonCompat
 
 // Full-screen Dictionary Security Lock management (Point 1 / 1.2) - a whole page for
 // every step, never a popup. This activity is only ever reached either with no PIN
@@ -107,34 +109,24 @@ class DictionaryLockManageActivity : Activity() {
     }
 
     private fun toggleRow(icon: String, title: String, subtitle: String, initialState: Boolean, onChange: (Boolean) -> Unit): LinearLayout {
-        var enabled = initialState
-        val toggle = TextView(this).apply {
-            text = if (enabled) "ON" else "OFF"
-            setTextColor(if (enabled) colorAccent else colorTextSecondary)
-            textSize = 13f
-        }
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             background = cardBg()
             setPadding(dp(16), dp(16), dp(16), dp(16))
-            isClickable = true
-            isFocusable = true
             layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                 bottomMargin = dp(12)
             }
-            setOnClickListener {
-                enabled = !enabled
-                toggle.text = if (enabled) "ON" else "OFF"
-                toggle.setTextColor(if (enabled) colorAccent else colorTextSecondary)
-                onChange(enabled)
-            }
         }
+
+        // Icon
         row.addView(TextView(this).apply {
             text = icon
             textSize = 18f
             setPadding(0, 0, dp(14), 0)
         })
+
+        // Title + Subtitle
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -150,6 +142,32 @@ class DictionaryLockManageActivity : Activity() {
             textSize = 11f
         })
         row.addView(column)
+
+        // Point 3: iOS style toggle (SwitchCompat - Green ON, Gray OFF)
+        val toggle = SwitchCompat(this).apply {
+            isChecked = initialState
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            
+            // Track color: Green when ON, Gray when OFF
+            val trackColor = android.content.res.ColorStateList(
+                arrayOf(
+                    intArrayOf(android.R.attr.state_checked),
+                    intArrayOf()
+                ),
+                intArrayOf(colorAccent, 0xFF9E9E9E.toInt())  // Green ON, Gray OFF
+            )
+            
+            // Thumb color: White circle
+            val thumbColor = android.content.res.ColorStateList.valueOf(0xFFFFFFFF.toInt())
+            
+            CompoundButtonCompat.setButtonTintList(this, trackColor)
+            setTextOn("")
+            setTextOff("")
+            
+            setOnCheckedChangeListener { _, isChecked ->
+                onChange(isChecked)
+            }
+        }
         row.addView(toggle)
         return row
     }
