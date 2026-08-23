@@ -30,6 +30,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     private lateinit var suggestionsGroup: LinearLayout
     private lateinit var clipboardButton: android.widget.ImageView
     private lateinit var clipboardPanel: LinearLayout
+    private lateinit var clipboardList: LinearLayout
     private lateinit var icon123Button: View
     private lateinit var iconEmojiButton: View
     private lateinit var emojiPanel: LinearLayout
