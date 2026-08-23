@@ -84,6 +84,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     private var clipboardManager: ClipboardManager? = null
     private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
+    private var screenshotObserver: android.database.ContentObserver? = null
+    private var lastSeenScreenshotUri: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -97,38 +99,102 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
                 val text = item.text?.toString()
                 if (!text.isNullOrBlank()) {
                     ClipboardStore.addTextItem(this, text)
-                } else {
-                    // Point 5: was previously encoding bitmap.toString() (garbage
-                    // object reference text) instead of the actual image bytes -
-                    // that's why nothing usable ever showed up for copied/shared
-                    // screenshots. Now properly compresses the real pixel data.
-                    val uri = item.uri
-                    if (uri != null) {
-                        try {
-                            val bitmap = android.provider.MediaStore.Images.Media.getBitmap(
-                                contentResolver, uri
-                            )
-                            val outputStream = java.io.ByteArrayOutputStream()
-                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, outputStream)
-                            val base64 = android.util.Base64.encodeToString(
-                                outputStream.toByteArray(),
-                                android.util.Base64.DEFAULT
-                            )
-                            bitmap.recycle()
-                            ClipboardStore.addImageItem(this, base64)
-                        } catch (e: Exception) {
-                            // Silent fail - not all URIs can be loaded as images
-                        }
-                    }
+                } else if (item.uri != null) {
+                    storeImageFromUri(item.uri)
                 }
             }
         }
         clipboardListener = listener
         clipboardManager?.addPrimaryClipChangedListener(listener)
+
+        // Point 4: Android does NOT put screenshots on the system clipboard by
+        // itself - the clipboard listener above only fires for an EXPLICIT copy
+        // action. To actually catch a screenshot the moment it's taken, watch
+        // MediaStore for new images and pick out ones saved to the Screenshots
+        // folder. Everything stays on-device (same as the rest of clipboard
+        // history) - nothing is uploaded anywhere.
+        registerScreenshotObserver()
+    }
+
+    private fun hasImageReadPermission(): Boolean {
+        val permission = if (android.os.Build.VERSION.SDK_INT >= 33) {
+            android.Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            android.Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+        return androidx.core.content.ContextCompat.checkSelfPermission(this, permission) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun registerScreenshotObserver() {
+        if (!hasImageReadPermission()) return
+        val observer = object : android.database.ContentObserver(android.os.Handler(mainLooper)) {
+            override fun onChange(selfChange: Boolean, uri: android.net.Uri?) {
+                super.onChange(selfChange, uri)
+                if (uri == null) return
+                checkIfNewImageIsScreenshot(uri)
+            }
+        }
+        screenshotObserver = observer
+        contentResolver.registerContentObserver(
+            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            true,
+            observer
+        )
+    }
+
+    private fun checkIfNewImageIsScreenshot(uri: android.net.Uri) {
+        try {
+            val projection = arrayOf(
+                android.provider.MediaStore.Images.Media._ID,
+                android.provider.MediaStore.Images.Media.DISPLAY_NAME,
+                android.provider.MediaStore.Images.Media.DATE_ADDED
+            )
+            contentResolver.query(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection, null, null,
+                "${android.provider.MediaStore.Images.Media.DATE_ADDED} DESC LIMIT 1"
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val id = cursor.getLong(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media._ID))
+                    val name = cursor.getString(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media.DISPLAY_NAME)) ?: ""
+                    val itemUri = android.content.ContentUris.withAppendedId(
+                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id
+                    )
+                    val itemUriString = itemUri.toString()
+                    // Avoid re-adding the same screenshot twice (onChange can fire
+                    // more than once for the same insert while the file finishes writing).
+                    if (itemUriString == lastSeenScreenshotUri) return
+                    if (name.contains("Screenshot", ignoreCase = true)) {
+                        lastSeenScreenshotUri = itemUriString
+                        storeImageFromUri(itemUri)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Silent fail - permission revoked mid-session, or store query error
+        }
+    }
+
+    private fun storeImageFromUri(uri: android.net.Uri) {
+        try {
+            val bitmap = android.provider.MediaStore.Images.Media.getBitmap(contentResolver, uri)
+            val outputStream = java.io.ByteArrayOutputStream()
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 90, outputStream)
+            val base64 = android.util.Base64.encodeToString(
+                outputStream.toByteArray(),
+                android.util.Base64.DEFAULT
+            )
+            bitmap.recycle()
+            ClipboardStore.addImageItem(this, base64)
+        } catch (e: Exception) {
+            // Silent fail - not all URIs can be loaded as images
+        }
     }
 
     override fun onDestroy() {
         clipboardListener?.let { clipboardManager?.removePrimaryClipChangedListener(it) }
+        screenshotObserver?.let { contentResolver.unregisterContentObserver(it) }
         cachedInputView = null
         super.onDestroy()
     }
@@ -380,6 +446,10 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         }
         keyboardView.keyboard?.keys?.firstOrNull { it.codes.firstOrNull() == 32 }?.label = spaceLabel
 
+        // Point 1: invalidateAllKeys() only triggers a redraw, not a re-measure.
+        // Force a fresh layout pass whenever the active keyboard object changes so
+        // key positions are always recalculated against the current view width.
+        keyboardView.requestLayout()
         keyboardView.invalidateAllKeys()
     }
 
