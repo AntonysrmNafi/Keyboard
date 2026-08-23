@@ -34,6 +34,9 @@ class DictionaryLockManageActivity : Activity() {
         super.onCreate(savedInstanceState)
         // Point 3: prevent forced IME hide+reshow flash during transitions
         window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED)
+        // Point 2: Allow Screenshots toggle now also covers this Dictionary
+        // Security Lock management screen itself (Change PIN, Recovery Key, etc).
+        applyScreenshotProtection()
         setContentView(R.layout.activity_settings_section)
 
         findViewById<TextView>(R.id.section_title).text = "Dictionary Security Lock"
@@ -44,6 +47,20 @@ class DictionaryLockManageActivity : Activity() {
         container = findViewById(R.id.row_container)
         screen = if (DictionaryLockStore.isLocked(this)) SCREEN_MENU else SCREEN_SET_PIN
         render()
+    }
+
+    private fun applyScreenshotProtection() {
+        val screenshotsAllowed = android.preference.PreferenceManager
+            .getDefaultSharedPreferences(this)
+            .getBoolean("allow_screenshots_my_dict", true)
+        if (screenshotsAllowed) {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window.setFlags(
+                android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                android.view.WindowManager.LayoutParams.FLAG_SECURE
+            )
+        }
     }
 
     @Deprecated("Deprecated in Java")
@@ -96,7 +113,7 @@ class DictionaryLockManageActivity : Activity() {
         container.addView(toggleRow(
             "\uD83D\udccf",
             "Allow Screenshots",
-            "Enable or disable screenshots in My Dictionary (English & বাংলা screens only)",
+            "Enable or disable screenshots inside My Dictionary and Dictionary Security Lock",
             screenshotsAllowed
         ) { enabled ->
             android.preference.PreferenceManager
@@ -104,7 +121,8 @@ class DictionaryLockManageActivity : Activity() {
                 .edit()
                 .putBoolean("allow_screenshots_my_dict", enabled)
                 .apply()
-            // Point 2: no app restart needed, settings take effect immediately
+            // Point 2: apply immediately to this screen too, no restart needed
+            applyScreenshotProtection()
         })
     }
 
