@@ -14,9 +14,12 @@ class SettingsMenuActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Point: this screen is now opened directly from the keyboard's own
+        // settings icon, so prevent the forced IME hide+reshow flash.
+        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED)
         setContentView(R.layout.activity_settings_menu)
 
-        findViewById<TextView>(R.id.back_button).setOnClickListener { finish() }
+        findViewById<android.widget.ImageView>(R.id.back_button).setOnClickListener { finish() }
 
         val container = findViewById<LinearLayout>(R.id.menu_container)
 
