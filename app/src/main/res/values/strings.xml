@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">BlockVeil Keyboard</string>
+    <string name="ime_subtype_label">Private Keyboard</string>
     <string name="tagline">Type your own Voice with FREEDOM</string>
     <string name="enable_keyboard">Enable Keyboard</string>
     <string name="select_keyboard">Switch to BlockVeil Keyboard</string>
