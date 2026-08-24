@@ -44,6 +44,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     private lateinit var englishKeyboardWithNumRow: Keyboard
     private lateinit var englishKeyboardWithNumRowLarge: Keyboard
     private lateinit var traditionalKeyboard: Keyboard
+    private lateinit var traditionalKeyboardPlain: Keyboard
+    private lateinit var traditionalKeyboardLarge: Keyboard
     private lateinit var symbolsKeyboard1: Keyboard
     private lateinit var symbolsKeyboard2: Keyboard
     private lateinit var numpadKeyboard: Keyboard
@@ -149,6 +151,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         englishKeyboardWithNumRow = Keyboard(this, R.xml.keys_layout_english_numrow)
         englishKeyboardWithNumRowLarge = Keyboard(this, R.xml.keys_layout_english_numrow_large)
         traditionalKeyboard = Keyboard(this, R.xml.keys_layout_bangla_traditional)
+        traditionalKeyboardPlain = Keyboard(this, R.xml.keys_layout_bangla_traditional_plain)
+        traditionalKeyboardLarge = Keyboard(this, R.xml.keys_layout_bangla_traditional_large)
         symbolsKeyboard1 = Keyboard(this, R.xml.keys_layout_symbols1)
         symbolsKeyboard2 = Keyboard(this, R.xml.keys_layout_symbols2)
         numpadKeyboard = Keyboard(this, R.xml.keys_layout_numpad)
@@ -240,7 +244,17 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         emojiPanel = view.findViewById(R.id.emoji_panel)
         emojiCategoryRow = view.findViewById(R.id.emoji_category_row)
         buildEmojiCategoryIcons()
-        view.findViewById<TextView>(R.id.emoji_abc_button).setOnClickListener { hideEmojiPanel() }
+        view.findViewById<TextView>(R.id.emoji_abc_button).setOnClickListener {
+            // Point 1.3: if the emoji panel was opened while on the 123/symbols
+            // view, those flags were still true underneath - just hiding the
+            // panel brought symbols/numpad back instead of the normal ABC
+            // keyboard. Explicitly reset back to the letter keyboard.
+            showingSymbols = false
+            showingNumpad = false
+            symbolsPageTwo = false
+            hideEmojiPanel()
+            applyKeyboardForMode()
+        }
 
         clipboardPanel = view.findViewById(R.id.clipboard_panel)
         clipboardList = view.findViewById(R.id.clipboard_list)
@@ -378,7 +392,9 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             showingNumpad -> numpadKeyboard
             showingSymbols && symbolsPageTwo -> symbolsKeyboard2
             showingSymbols -> symbolsKeyboard1
-            mode == InputMode.BANGLA_TRADITIONAL -> traditionalKeyboard
+            mode == InputMode.BANGLA_TRADITIONAL && useNumberRow && useLarge -> traditionalKeyboardLarge
+            mode == InputMode.BANGLA_TRADITIONAL && useNumberRow -> traditionalKeyboard
+            mode == InputMode.BANGLA_TRADITIONAL -> traditionalKeyboardPlain
             useNumberRow && useLarge -> englishKeyboardWithNumRowLarge
             useNumberRow -> englishKeyboardWithNumRow
             else -> englishKeyboardPlain
@@ -485,15 +501,18 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             COPY_KEY_CODE -> {
                 ic.performContextMenuAction(android.R.id.selectAll)
                 ic.performContextMenuAction(android.R.id.copy)
+                android.widget.Toast.makeText(this, "Text Copied", android.widget.Toast.LENGTH_SHORT).show()
             }
             CUT_KEY_CODE -> {
                 ic.performContextMenuAction(android.R.id.selectAll)
                 ic.performContextMenuAction(android.R.id.cut)
                 resetWordState()
+                android.widget.Toast.makeText(this, "Text Cut", android.widget.Toast.LENGTH_SHORT).show()
             }
             PASTE_KEY_CODE -> {
                 ic.performContextMenuAction(android.R.id.paste)
                 resetWordState()
+                android.widget.Toast.makeText(this, "Text Pasted", android.widget.Toast.LENGTH_SHORT).show()
             }
         }
     }
