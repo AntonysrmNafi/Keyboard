@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Two half-circle arrows forming a sync/history circle, top-left -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="@color/ime_key_function"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M3.2,6.7 A4,4 0 0,1 10.8,5.3" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="@color/ime_key_function"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M8.8,4.3 L10.8,5.3 L9.4,7.1" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="@color/ime_key_function"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M10.8,3.3 A4,4 0 0,1 3.2,4.7" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="@color/ime_key_function"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M5.2,5.7 L3.2,4.7 L4.6,2.9" />
+
+    <!-- Small bold T subscript, bottom-right -->
+    <path
+        android:fillColor="@color/ime_key_function"
+        android:pathData="M13.5,13 L20,13 L20,14.5 L17.6,14.5 L17.6,20.5 L15.9,20.5 L15.9,14.5 L13.5,14.5 Z" />
+</vector>
