@@ -19,21 +19,6 @@ class MainActivity : Activity() {
         // Point 3: prevent forced IME hide+reshow flash - this screen is opened
         // directly from the keyboard's own settings icon.
         window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED)
-
-        // Launching a non-launcher Activity directly with FLAG_ACTIVITY_NEW_TASK
-        // from the IME service (a Service context, not an Activity) produced a
-        // malformed back stack - navigating anywhere from there except one
-        // specific screen would exit the whole app instead of going back
-        // properly. MainActivity is the app's real declared launcher activity,
-        // so it's the one safe root to start a new task from; if it was opened
-        // just to jump into Settings, forward there immediately with a normal
-        // in-app navigation and remove itself from the back stack.
-        if (intent.getBooleanExtra(EXTRA_OPEN_SETTINGS, false)) {
-            startActivity(Intent(this, SettingsMenuActivity::class.java))
-            finish()
-            return
-        }
-
         setContentView(R.layout.activity_main)
 
         findViewById<Button>(R.id.enable_button).setOnClickListener {
@@ -60,11 +45,20 @@ class MainActivity : Activity() {
         findViewById<LinearLayout>(R.id.customize_tile).setOnClickListener {
             android.widget.Toast.makeText(this, getString(R.string.coming_soon), android.widget.Toast.LENGTH_SHORT).show()
         }
+
+        // Point 3: opened directly from the keyboard's own settings gear icon -
+        // push the real Settings menu on top, exactly like tapping the
+        // settings_tile above does normally. Not finishing MainActivity here:
+        // it stays as the safe, properly-established root of this task: pressing
+        // back from Settings simply shows this screen for a moment, then a
+        // second back exits normally, same as any other Android app.
+        if (intent.getBooleanExtra(EXTRA_OPEN_SETTINGS, false)) {
+            startActivity(Intent(this, SettingsMenuActivity::class.java))
+        }
     }
 
     override fun onResume() {
         super.onResume()
-        if (intent.getBooleanExtra(EXTRA_OPEN_SETTINGS, false)) return
         updateStatus()
     }
 
