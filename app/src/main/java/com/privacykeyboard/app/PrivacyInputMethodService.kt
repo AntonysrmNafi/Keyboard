@@ -219,10 +219,14 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             // otherwise the keyboard window stays floating on top of the newly
             // opened Settings screen since starting a new task doesn't dismiss it.
             requestHideSelf(0)
-            // Was opening MainActivity (just the "Enable Keyboard" screen), which
-            // felt like it kicked the user out of the app for no real reason.
-            // The gear icon should go straight to the actual settings menu.
-            val intent = android.content.Intent(this, SettingsMenuActivity::class.java)
+            // Launch MainActivity (the app's declared launcher activity) rather
+            // than a non-launcher screen directly - starting a non-launcher
+            // Activity with FLAG_ACTIVITY_NEW_TASK from a Service context
+            // produced a broken back stack where navigating to most sub-screens
+            // exited the whole app. MainActivity immediately forwards to the
+            // real Settings menu and removes itself from the back stack.
+            val intent = android.content.Intent(this, MainActivity::class.java)
+            intent.putExtra(MainActivity.EXTRA_OPEN_SETTINGS, true)
             intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
             startActivity(intent)
         }
