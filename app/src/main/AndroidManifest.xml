@@ -42,6 +42,11 @@
             android:theme="@style/Theme.BlockVeil" />
 
         <activity
+            android:name=".FaqActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BlockVeil" />
+
+        <activity
             android:name=".AdvancedSettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.BlockVeil" />
