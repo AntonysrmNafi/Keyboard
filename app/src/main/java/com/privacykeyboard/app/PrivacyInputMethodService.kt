@@ -219,12 +219,14 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             // otherwise the keyboard window stays floating on top of the newly
             // opened Settings screen since starting a new task doesn't dismiss it.
             requestHideSelf(0)
-            // Launch MainActivity (the app's declared launcher activity) rather
-            // than a non-launcher screen directly - starting a non-launcher
-            // Activity with FLAG_ACTIVITY_NEW_TASK from a Service context
-            // produced a broken back stack where navigating to most sub-screens
-            // exited the whole app. MainActivity immediately forwards to the
-            // real Settings menu and removes itself from the back stack.
+            // Starting a non-launcher Activity (SettingsMenuActivity) directly as
+            // the ROOT of a brand new task via FLAG_ACTIVITY_NEW_TASK from a
+            // Service context left that task's back stack in a broken state -
+            // navigating to almost any sub-screen from there exited the whole
+            // app. MainActivity is the app's actual declared launcher activity,
+            // so starting a new task there first (the normal, well-tested case)
+            // and then pushing Settings on top of it as an ordinary in-app
+            // navigation is the safe way to do this.
             val intent = android.content.Intent(this, MainActivity::class.java)
             intent.putExtra(MainActivity.EXTRA_OPEN_SETTINGS, true)
             intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
