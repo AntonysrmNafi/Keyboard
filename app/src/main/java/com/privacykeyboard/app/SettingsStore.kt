@@ -32,6 +32,10 @@ object SettingsStore {
     const val KEY_ENABLE_SPLIT_KEYBOARD_FOLDABLE = "enable_split_keyboard_foldable"
     const val KEY_FORCED_ENTER_BUTTON = "forced_enter_button"
 
+    // Advanced
+    const val KEY_VOLUME_KEY_CURSOR = "volume_key_cursor"
+    const val KEY_VOLUME_KEY_CURSOR_MEDIA = "volume_key_cursor_media"
+
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
