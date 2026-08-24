@@ -267,7 +267,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
         clipboardPanel = view.findViewById(R.id.clipboard_panel)
         clipboardList = view.findViewById(R.id.clipboard_list)
-        view.findViewById<TextView>(R.id.clipboard_close_button).setOnClickListener { hideClipboardPanel() }
+        view.findViewById<android.widget.ImageView>(R.id.clipboard_close_button).setOnClickListener { hideClipboardPanel() }
         view.findViewById<TextView>(R.id.clipboard_clear_button).setOnClickListener {
             ClipboardStore.clear(this)
             refreshClipboardList()
@@ -302,9 +302,9 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
                 val ic = currentInputConnection
                 if (ic != null) {
                     val moveCode = if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-                        KeyEvent.KEYCODE_DPAD_LEFT
-                    } else {
                         KeyEvent.KEYCODE_DPAD_RIGHT
+                    } else {
+                        KeyEvent.KEYCODE_DPAD_LEFT
                     }
                     ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, moveCode))
                     ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, moveCode))
