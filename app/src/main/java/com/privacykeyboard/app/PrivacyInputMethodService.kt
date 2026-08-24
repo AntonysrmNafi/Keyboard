@@ -280,6 +280,52 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     // strip) above the normal keyboard in certain apps/orientations, which can
     // look exactly like "two keyboards stacked". Force this off unconditionally -
     // this custom keyboard never needs it.
+    // Point 4.1/4.2: when enabled, the volume buttons move the text cursor
+    // left/right instead of changing the device volume, while a text field is
+    // focused. By default this does NOT apply during calls or audio/video
+    // playback (volume behaves normally then) unless the second toggle is
+    // also on.
+    private fun shouldHandleVolumeKeyAsCursor(): Boolean {
+        if (!isInputViewShown) return false
+        if (!SettingsStore.getBoolean(this, SettingsStore.KEY_VOLUME_KEY_CURSOR, true)) return false
+        val audioManager = getSystemService(AUDIO_SERVICE) as? AudioManager
+        val inCallOrMedia = audioManager?.mode == AudioManager.MODE_IN_CALL ||
+            audioManager?.mode == AudioManager.MODE_IN_COMMUNICATION ||
+            audioManager?.isMusicActive == true
+        if (!inCallOrMedia) return true
+        return SettingsStore.getBoolean(this, SettingsStore.KEY_VOLUME_KEY_CURSOR_MEDIA, false)
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            if (shouldHandleVolumeKeyAsCursor()) {
+                val ic = currentInputConnection
+                if (ic != null) {
+                    val moveCode = if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+                        KeyEvent.KEYCODE_DPAD_LEFT
+                    } else {
+                        KeyEvent.KEYCODE_DPAD_RIGHT
+                    }
+                    ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, moveCode))
+                    ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, moveCode))
+                    return true
+                }
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            if (shouldHandleVolumeKeyAsCursor()) {
+                // Already handled the cursor move in onKeyDown - just swallow
+                // the key-up too so the system never sees it as a volume press.
+                return true
+            }
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
     override fun onEvaluateFullscreenMode(): Boolean = false
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
