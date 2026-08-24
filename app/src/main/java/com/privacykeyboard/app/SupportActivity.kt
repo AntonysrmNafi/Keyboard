@@ -18,16 +18,12 @@ class SupportActivity : Activity() {
         setContentView(R.layout.activity_settings_section)
 
         findViewById<TextView>(R.id.section_title).text = "Support"
-        findViewById<TextView>(R.id.back_button).setOnClickListener { finish() }
+        findViewById<android.widget.ImageView>(R.id.back_button).setOnClickListener { finish() }
 
         val container = findViewById<LinearLayout>(R.id.row_container)
 
         container.addView(buildRow("FAQ", "Answers to common questions") {
-            startActivity(
-                Intent(this, InfoActivity::class.java)
-                    .putExtra(InfoActivity.EXTRA_TITLE, "FAQ")
-                    .putExtra(InfoActivity.EXTRA_BODY, InfoActivity.FAQ_TEXT)
-            )
+            startActivity(Intent(this, FaqActivity::class.java))
         })
         container.addView(buildRow("Suggest Feature", "Tell us what you'd like to see next") {
             Toast.makeText(this, getString(R.string.coming_soon), Toast.LENGTH_SHORT).show()
