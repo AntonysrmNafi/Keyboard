@@ -120,12 +120,12 @@
 
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="254dp">
+        android:layout_height="wrap_content">
 
         <com.privacykeyboard.app.BlockVeilKeyboardView
             android:id="@+id/keyboard_view"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:background="@color/ime_bg"
             android:shadowColor="#00000000"
             android:shadowRadius="0" />
@@ -133,7 +133,7 @@
         <LinearLayout
             android:id="@+id/clipboard_panel"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="254dp"
             android:orientation="vertical"
             android:background="@color/ime_bg"
             android:visibility="gone">
@@ -185,7 +185,7 @@
         <LinearLayout
             android:id="@+id/emoji_panel"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="254dp"
             android:orientation="vertical"
             android:background="#FFFFFFFF"
             android:visibility="gone">
