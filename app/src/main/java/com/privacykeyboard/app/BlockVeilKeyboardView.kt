@@ -49,6 +49,10 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     var actionLongPressCodes: Set<Int> = emptySet()
     var onActionLongPress: ((code: Int) -> Unit)? = null
 
+    // Point 3: keys that repeat (with acceleration) while held down, e.g.
+    // Backspace - starts at a normal pace and speeds up the longer it's held.
+    var repeatableKeyCodes: Set<Int> = setOf(-5)
+
     // Key codes rendered with the "function key" color instead of the letter color.
     // Point 3: only true action/state-changing keys belong here (backspace, enter,
     // shift, mode switches, emoji, more-symbols) - keys that just type a character
@@ -85,6 +89,12 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private var longPressTriggered = false
     private var longPressStartX = 0f
     private var longPressStartY = 0f
+
+    // Point 3: Backspace (and anything else in repeatableKeyCodes) repeats
+    // while held, accelerating the longer it's held down.
+    private var repeatRunnable: Runnable? = null
+    private var repeatTriggered = false
+    private var repeatCount = 0
 
     private val density = context.resources.displayMetrics.density
     private val cornerRadius = 8f * density
@@ -252,6 +262,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
                 if (!trackingSpaceKey) {
                     scheduleLongPressCheck(me.x, me.y)
+                    scheduleRepeatCheck(code)
                 }
             }
             MotionEvent.ACTION_MOVE -> {
@@ -264,6 +275,10 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 } else if (longPressRunnable != null) {
                     val moved = abs(me.x - longPressStartX) + abs(me.y - longPressStartY)
                     if (moved > 24f) cancelLongPressCheck()
+                }
+                if (repeatRunnable != null) {
+                    val currentKey = keyAt(me.x, me.y)
+                    if (currentKey?.codes?.firstOrNull() != downKeyCode) cancelRepeatCheck()
                 }
 
                 // If the finger has moved off the originally-pressed key, cancel the
@@ -280,12 +295,15 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 cancelLongPressCheck()
+                cancelRepeatCheck()
                 pressedKeyCode = null
                 invalidate()
 
                 val wasSwipe = trackingSpaceKey && isSwiping
                 val wasHintOrActionLongPress = longPressTriggered
+                val wasRepeat = repeatTriggered
                 longPressTriggered = false
+                repeatTriggered = false
                 trackingSpaceKey = false
                 isSwiping = false
 
@@ -293,7 +311,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 downKeyCode = null
 
                 if (me.actionMasked == MotionEvent.ACTION_UP &&
-                    !wasSwipe && !wasHintOrActionLongPress &&
+                    !wasSwipe && !wasHintOrActionLongPress && !wasRepeat &&
                     downCode != null
                 ) {
                     val releaseKey = keyAt(me.x, me.y)
@@ -305,6 +323,33 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 downCode?.let { keyListener?.onRelease(it) }
             }
         }
+    }
+
+    private fun scheduleRepeatCheck(code: Int?) {
+        if (code == null || !repeatableKeyCodes.contains(code)) return
+        repeatTriggered = false
+        repeatCount = 0
+
+        lateinit var runnable: Runnable
+        runnable = Runnable {
+            repeatTriggered = true
+            keyListener?.onKey(code, null)
+            repeatCount++
+            // Point 3: starts at a comfortable ~150ms pace and accelerates down
+            // to a floor of ~35ms the longer the key is held, so it starts
+            // deleting noticeably faster the longer you hold it.
+            val nextDelay = (150 * Math.pow(0.85, repeatCount.toDouble())).toLong().coerceAtLeast(35)
+            longPressHandler.postDelayed(runnable, nextDelay)
+        }
+        repeatRunnable = runnable
+        // Initial delay before the first repeat kicks in (the first tap itself
+        // is handled normally by the ACTION_UP path if released before this).
+        longPressHandler.postDelayed(runnable, 400)
+    }
+
+    private fun cancelRepeatCheck() {
+        repeatRunnable?.let { longPressHandler.removeCallbacks(it) }
+        repeatRunnable = null
     }
 
     private fun scheduleLongPressCheck(x: Float, y: Float) {
