@@ -43,9 +43,9 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     private lateinit var englishKeyboardPlain: Keyboard
     private lateinit var englishKeyboardWithNumRow: Keyboard
     private lateinit var englishKeyboardWithNumRowLarge: Keyboard
-    private lateinit var traditionalKeyboard: Keyboard
-    private lateinit var traditionalKeyboardPlain: Keyboard
-    private lateinit var traditionalKeyboardLarge: Keyboard
+    // Point 2: প্রভাত mode reuses the exact same Keyboard objects as English
+    // (see applyKeyboardForMode below) - no separate Bangla layout objects,
+    // so there is zero possibility of any drift between the two.
     private lateinit var symbolsKeyboard1: Keyboard
     private lateinit var symbolsKeyboard2: Keyboard
     private lateinit var numpadKeyboard: Keyboard
@@ -76,6 +76,11 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
     // Auto-capitalization / double-space-period state
     private var capitalizeNext = true
+    // Point 4: tracks whether the last character actually committed to the text
+    // field was a "." - used so capitalization kicks in only once a SPACE is
+    // typed after the period, not immediately after the period itself (so
+    // things like "3.5" or "e.g." don't get wrongly capitalized mid-word).
+    private var lastCommittedCharWasPeriod = false
     private var lastCommittedWasSpace = false
 
     // Long-press hints on the top letter row (q..p -> 1..0), like a lightweight number row.
@@ -150,9 +155,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         englishKeyboardPlain = Keyboard(this, R.xml.keys_layout_english)
         englishKeyboardWithNumRow = Keyboard(this, R.xml.keys_layout_english_numrow)
         englishKeyboardWithNumRowLarge = Keyboard(this, R.xml.keys_layout_english_numrow_large)
-        traditionalKeyboard = Keyboard(this, R.xml.keys_layout_bangla_traditional)
-        traditionalKeyboardPlain = Keyboard(this, R.xml.keys_layout_bangla_traditional_plain)
-        traditionalKeyboardLarge = Keyboard(this, R.xml.keys_layout_bangla_traditional_large)
+        // Point 2: no separate Bangla Keyboard objects - প্রভাত mode reuses
+        // the English ones directly (see applyKeyboardForMode).
         symbolsKeyboard1 = Keyboard(this, R.xml.keys_layout_symbols1)
         symbolsKeyboard2 = Keyboard(this, R.xml.keys_layout_symbols2)
         numpadKeyboard = Keyboard(this, R.xml.keys_layout_numpad)
@@ -336,6 +340,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         isShifted = false
         capitalizeNext = true
         lastCommittedWasSpace = false
+        lastCommittedCharWasPeriod = false
         showingSymbols = false
         symbolsPageTwo = false
         showingNumpad = false
@@ -449,9 +454,9 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             showingNumpad -> numpadKeyboard
             showingSymbols && symbolsPageTwo -> symbolsKeyboard2
             showingSymbols -> symbolsKeyboard1
-            mode == InputMode.BANGLA_TRADITIONAL && useNumberRow && useLarge -> traditionalKeyboardLarge
-            mode == InputMode.BANGLA_TRADITIONAL && useNumberRow -> traditionalKeyboard
-            mode == InputMode.BANGLA_TRADITIONAL -> traditionalKeyboardPlain
+            // Point 2: প্রভাত falls straight through to the exact same
+            // English Keyboard objects below - no separate Bangla layout at
+            // all, so there's no possibility of it ever drifting out of sync.
             useNumberRow && useLarge -> englishKeyboardWithNumRowLarge
             useNumberRow -> englishKeyboardWithNumRow
             else -> englishKeyboardPlain
@@ -502,6 +507,11 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
                 commitWordBoundary(ic, "")
                 ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
                 ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
+                // Point 4: capitalize the first character of the new line.
+                if (SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)) {
+                    capitalizeNext = true
+                }
+                lastCommittedCharWasPeriod = false
             }
             MODE_SWITCH_CODE -> switchMode()
             EMOJI_PLACEHOLDER_CODE -> showEmojiPanel()
@@ -609,6 +619,13 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         var typedChar = primaryCode.toChar()
         val directCommitMode = showingSymbols || showingNumpad
 
+        // Point 4: reset here unconditionally - the period branch below sets
+        // it back to true only when THIS character actually is a period, so
+        // any other character typed right after a period correctly clears it
+        // (e.g. "3.5" or "e.g.wrong" never get wrongly auto-capitalized).
+        val isPeriodThisTime = typedChar == '.' && !directCommitMode
+        lastCommittedCharWasPeriod = false
+
         if (isShifted && mode != InputMode.BANGLA_TRADITIONAL && !directCommitMode) {
             typedChar = typedChar.uppercaseChar()
         }
@@ -623,9 +640,11 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
         if (typedChar == ' ') {
             handleSpace(ic)
-        } else if (typedChar == '.' && !directCommitMode) {
+        } else if (isPeriodThisTime) {
             commitWordBoundary(ic, ".")
-            if (autoCap) capitalizeNext = true
+            // Point 4: don't capitalize yet - only once a space follows this
+            // period. handleSpace() checks lastCommittedCharWasPeriod for that.
+            lastCommittedCharWasPeriod = true
             lastCommittedWasSpace = false
         } else if (showingNumpad && numpadBangla && typedChar in latinToBanglaDigit.keys) {
             ic.commitText(latinToBanglaDigit[typedChar].toString(), 1)
@@ -690,6 +709,12 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
         commitWordBoundary(ic, " ")
         lastCommittedWasSpace = true
+        // Point 4: capitalize the next character only now - once a space has
+        // actually followed the period, not immediately after the period itself.
+        if (lastCommittedCharWasPeriod && SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)) {
+            capitalizeNext = true
+        }
+        lastCommittedCharWasPeriod = false
     }
 
     private fun appendToWord(ic: InputConnection, typedChar: Char) {
