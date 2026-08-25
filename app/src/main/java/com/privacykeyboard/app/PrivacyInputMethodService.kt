@@ -401,31 +401,33 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     // matching the reference app's style, so no per-setting label switch is needed here.
 
     private fun applySizingAndOneHanded() {
-        keyboardView.post {
-            val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-            val resizeEnabled = SettingsStore.getBoolean(this, SettingsStore.KEY_KEYBOARD_RESIZE_ENABLED, false)
-            val heightPercent = if (resizeEnabled) {
-                SettingsStore.getInt(
-                    this,
-                    if (landscape) SettingsStore.KEY_KEYBOARD_HEIGHT_LANDSCAPE else SettingsStore.KEY_KEYBOARD_HEIGHT_PORTRAIT,
-                    80
-                )
-            } else 100
-            keyboardView.pivotY = 0f
-            keyboardView.scaleY = heightPercent / 100f
+        val resizeEnabled = SettingsStore.getBoolean(this, SettingsStore.KEY_KEYBOARD_RESIZE_ENABLED, false)
+        val heightPercent = if (resizeEnabled) {
+            SettingsStore.getInt(
+                this,
+                if (landscape) SettingsStore.KEY_KEYBOARD_HEIGHT_LANDSCAPE else SettingsStore.KEY_KEYBOARD_HEIGHT_PORTRAIT,
+                80
+            )
+        } else 100
+        keyboardView.pivotY = 0f
+        keyboardView.scaleY = heightPercent / 100f
 
-            val oneHandedMode = SettingsStore.getInt(this, SettingsStore.KEY_ONE_HANDED_MODE, 0)
-            val widthPercent = if (oneHandedMode != 0) {
-                SettingsStore.getInt(
-                    this,
-                    if (landscape) SettingsStore.KEY_ONE_HANDED_WIDTH_LANDSCAPE else SettingsStore.KEY_ONE_HANDED_WIDTH_PORTRAIT,
-                    if (landscape) 40 else 85
-                )
-            } else 100
-            keyboardView.pivotX = if (oneHandedMode == 2) keyboardView.width.toFloat() else 0f
-            keyboardView.scaleX = widthPercent / 100f
-        }
+        val oneHandedMode = SettingsStore.getInt(this, SettingsStore.KEY_ONE_HANDED_MODE, 0)
+        val widthPercent = if (oneHandedMode != 0) {
+            SettingsStore.getInt(
+                this,
+                if (landscape) SettingsStore.KEY_ONE_HANDED_WIDTH_LANDSCAPE else SettingsStore.KEY_ONE_HANDED_WIDTH_PORTRAIT,
+                if (landscape) 40 else 85
+            )
+        } else 100
+        // Point 2: pivotX depending on keyboardView.width only makes sense once
+        // the view has actually been measured - guard against 0 (not yet laid
+        // out) so a stale/zero pivot never causes a lopsided scale on the very
+        // first frame after a keyboard switch.
+        keyboardView.pivotX = if (oneHandedMode == 2 && keyboardView.width > 0) keyboardView.width.toFloat() else 0f
+        keyboardView.scaleX = widthPercent / 100f
     }
 
     private fun updateTopStripVisibility() {
