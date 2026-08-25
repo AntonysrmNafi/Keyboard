@@ -1,9 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Point 1: a <subtype android:label="..."> here also shows up as the
-     primary two-line entry in the system's "Choose input method" quick
-     switcher popup (pushing the app name to a subtitle there too), not just
-     in "Manage on-screen keyboards" as intended - so it's left out entirely
-     to keep that quick-switcher showing a clean single "BlockVeil Keyboard"
-     line like every other keyboard app. -->
+<!-- Point 1: a single subtype was getting shown as the PRIMARY label in the
+     system's "Choose input method" quick switcher popup (a known Android
+     quirk when an IME declares exactly one subtype), even though it correctly
+     stayed a small subtitle in "Manage on-screen keyboards". Declaring two
+     subtypes - one per language this keyboard actually supports - is the
+     standard workaround multi-language keyboards use: it stops the picker
+     from merging a subtype label into the primary row, while "Manage
+     keyboards" still shows a subtitle. -->
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
-    android:settingsActivity="" />
+    android:settingsActivity="">
+    <subtype
+        android:label="@string/ime_subtype_label"
+        android:imeSubtypeLocale="en_US"
+        android:imeSubtypeMode="keyboard" />
+    <subtype
+        android:label="@string/ime_subtype_label"
+        android:imeSubtypeLocale="bn_BD"
+        android:imeSubtypeMode="keyboard" />
+</input-method>
