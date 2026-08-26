@@ -43,9 +43,12 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     private lateinit var englishKeyboardPlain: Keyboard
     private lateinit var englishKeyboardWithNumRow: Keyboard
     private lateinit var englishKeyboardWithNumRowLarge: Keyboard
-    // Point 2: প্রভাত mode reuses the exact same Keyboard objects as English
-    // (see applyKeyboardForMode below) - no separate Bangla layout objects,
-    // so there is zero possibility of any drift between the two.
+    private lateinit var traditionalKeyboard: Keyboard
+    // Point 3: প্রভাত has its own dedicated file (keys_layout_bangla_traditional.xml,
+    // currently a byte-for-byte copy of English's numrow layout) - kept as a
+    // separate file rather than reusing English's object directly, so its key
+    // labels can later be swapped to actual Bengali characters without
+    // touching English at all.
     private lateinit var symbolsKeyboard1: Keyboard
     private lateinit var symbolsKeyboard2: Keyboard
     private lateinit var numpadKeyboard: Keyboard
@@ -155,8 +158,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         englishKeyboardPlain = Keyboard(this, R.xml.keys_layout_english)
         englishKeyboardWithNumRow = Keyboard(this, R.xml.keys_layout_english_numrow)
         englishKeyboardWithNumRowLarge = Keyboard(this, R.xml.keys_layout_english_numrow_large)
-        // Point 2: no separate Bangla Keyboard objects - প্রভাত mode reuses
-        // the English ones directly (see applyKeyboardForMode).
+        traditionalKeyboard = Keyboard(this, R.xml.keys_layout_bangla_traditional)
         symbolsKeyboard1 = Keyboard(this, R.xml.keys_layout_symbols1)
         symbolsKeyboard2 = Keyboard(this, R.xml.keys_layout_symbols2)
         numpadKeyboard = Keyboard(this, R.xml.keys_layout_numpad)
@@ -454,9 +456,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             showingNumpad -> numpadKeyboard
             showingSymbols && symbolsPageTwo -> symbolsKeyboard2
             showingSymbols -> symbolsKeyboard1
-            // Point 2: প্রভাত falls straight through to the exact same
-            // English Keyboard objects below - no separate Bangla layout at
-            // all, so there's no possibility of it ever drifting out of sync.
+            mode == InputMode.BANGLA_TRADITIONAL -> traditionalKeyboard
             useNumberRow && useLarge -> englishKeyboardWithNumRowLarge
             useNumberRow -> englishKeyboardWithNumRow
             else -> englishKeyboardPlain
@@ -478,6 +478,23 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         // key positions are always recalculated against the current view width.
         keyboardView.requestLayout()
         keyboardView.invalidateAllKeys()
+
+        // TEMP DIAGNOSTIC (Point 4): shows the keyboard's own computed width vs
+        // the view's actual measured width, specifically for the symbols page
+        // where keys have been visibly cut off - this will tell us the exact
+        // numeric mismatch on the next test instead of guessing further.
+        // Safe to remove once the real cause is confirmed.
+        if (showingSymbols) {
+            keyboardView.post {
+                val kbWidth = keyboardView.keyboard?.minWidth ?: -1
+                val viewWidth = keyboardView.width
+                android.widget.Toast.makeText(
+                    this,
+                    "DEBUG: keyboard.minWidth=$kbWidth  view.width=$viewWidth",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        }
     }
 
     private fun resetWordState() {
