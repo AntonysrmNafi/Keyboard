@@ -339,8 +339,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         // Point 1: Dual keyboard issue fixed - view is now cached and reused, 
         // no need for cleanup
         resetWordState()
-        isShifted = false
         capitalizeNext = true
+        syncShiftedDisplay(true)
         lastCommittedWasSpace = false
         lastCommittedCharWasPeriod = false
         showingSymbols = false
@@ -478,23 +478,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         // key positions are always recalculated against the current view width.
         keyboardView.requestLayout()
         keyboardView.invalidateAllKeys()
-
-        // TEMP DIAGNOSTIC (Point 4): shows the keyboard's own computed width vs
-        // the view's actual measured width, specifically for the symbols page
-        // where keys have been visibly cut off - this will tell us the exact
-        // numeric mismatch on the next test instead of guessing further.
-        // Safe to remove once the real cause is confirmed.
-        if (showingSymbols) {
-            keyboardView.post {
-                val kbWidth = keyboardView.keyboard?.minWidth ?: -1
-                val viewWidth = keyboardView.width
-                android.widget.Toast.makeText(
-                    this,
-                    "DEBUG: keyboard.minWidth=$kbWidth  view.width=$viewWidth",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
-            }
-        }
     }
 
     private fun resetWordState() {
@@ -527,6 +510,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
                 // Point 4: capitalize the first character of the new line.
                 if (SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)) {
                     capitalizeNext = true
+                    syncShiftedDisplay(true)
                 }
                 lastCommittedCharWasPeriod = false
             }
@@ -575,7 +559,10 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         giveKeyFeedback()
         ic.commitText(hint, 1)
         lastCommittedWasSpace = false
-        capitalizeNext = false
+        if (capitalizeNext) {
+            capitalizeNext = false
+            if (isShifted) syncShiftedDisplay(false)
+        }
     }
 
     private fun handleClipboardAction(code: Int) {
@@ -614,20 +601,30 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         }
     }
 
+    // Point 1: keeps the keycap display's uppercase/lowercase preview in sync
+    // with isShifted across every English Keyboard object.
+    private fun syncShiftedDisplay(shifted: Boolean) {
+        isShifted = shifted
+        englishKeyboardPlain.isShifted = shifted
+        englishKeyboardWithNumRow.isShifted = shifted
+        englishKeyboardWithNumRowLarge.isShifted = shifted
+        if (::keyboardView.isInitialized) keyboardView.invalidateAllKeys()
+    }
+
     private fun toggleShift() {
-        isShifted = !isShifted
-        englishKeyboardPlain.isShifted = isShifted
-        englishKeyboardWithNumRow.isShifted = isShifted
-        englishKeyboardWithNumRowLarge.isShifted = isShifted
-        keyboardView.invalidateAllKeys()
+        syncShiftedDisplay(!isShifted)
+        // Point 1: if the keyboard was showing uppercase because of pending
+        // auto-capitalization and the user manually taps Shift to cancel that
+        // (turning the preview back to lowercase), the next letter should
+        // actually type lowercase too - not get force-capitalized anyway.
+        if (!isShifted) {
+            capitalizeNext = false
+        }
     }
 
     private fun switchMode() {
         mode = mode.next()
-        isShifted = false
-        englishKeyboardPlain.isShifted = false
-        englishKeyboardWithNumRow.isShifted = false
-        englishKeyboardWithNumRowLarge.isShifted = false
+        syncShiftedDisplay(false)
         resetWordState()
         applyKeyboardForMode()
     }
@@ -651,6 +648,9 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         if (!directCommitMode && autoCap && capitalizeNext && mode == InputMode.ENGLISH && typedChar.isLetter()) {
             typedChar = typedChar.uppercaseChar()
             capitalizeNext = false
+            // Point 1: the pending auto-cap has now been used up on this
+            // letter - drop the keyboard's uppercase preview back to normal.
+            if (isShifted) syncShiftedDisplay(false)
         } else if (typedChar.isLetter()) {
             capitalizeNext = false
         }
@@ -718,7 +718,9 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         if (!doubleSpaceTab && doubleSpacePeriod && lastCommittedWasSpace && rawWordBuffer.isEmpty()) {
             ic.deleteSurroundingText(1, 0)
             ic.commitText(". ", 1)
-            capitalizeNext = SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)
+            val autoCapOn = SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)
+            capitalizeNext = autoCapOn
+            if (autoCapOn) syncShiftedDisplay(true)
             lastCommittedWasSpace = false
             resetWordState()
             return
@@ -730,6 +732,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         // actually followed the period, not immediately after the period itself.
         if (lastCommittedCharWasPeriod && SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)) {
             capitalizeNext = true
+            syncShiftedDisplay(true)
         }
         lastCommittedCharWasPeriod = false
     }
