@@ -187,7 +187,7 @@
             android:layout_width="match_parent"
             android:layout_height="254dp"
             android:orientation="vertical"
-            android:background="#FFFFFFFF"
+            android:background="@color/ime_bg"
             android:visibility="gone">
 
             <LinearLayout
@@ -195,7 +195,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="40dp"
                 android:orientation="horizontal"
-                android:background="#FFFFFFFF" />
+                android:background="@color/ime_bg" />
 
             <View
                 android:layout_width="match_parent"
@@ -206,14 +206,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:background="#FFFFFFFF">
+                android:background="@color/ime_bg">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:text="@string/emoji_coming_soon"
-                    android:textColor="#9AA6A0"
+                    android:textColor="@color/ime_text_secondary"
                     android:textSize="13sp" />
             </FrameLayout>
 
@@ -221,7 +221,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:background="#FFFFFFFF"
+                android:background="@color/ime_bg"
                 android:padding="8dp">
 
                 <TextView
