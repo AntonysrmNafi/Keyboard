@@ -480,6 +480,29 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         keyboardView.invalidateAllKeys()
     }
 
+    // Point 1: fires whenever the cursor/selection changes in the connected
+    // app, including an external selection made via the system's own
+    // long-press-to-select. Our own word-buffer tracking has no idea about
+    // that kind of selection, so without this it could end up deleting the
+    // wrong range on the next keypress instead of letting the normal
+    // "typing replaces the selection" behavior happen. Resetting our
+    // internal buffer whenever the change wasn't caused by our own typing
+    // keeps the two in sync.
+    override fun onUpdateSelection(
+        oldSelStart: Int, oldSelEnd: Int,
+        newSelStart: Int, newSelEnd: Int,
+        candidatesStart: Int, candidatesEnd: Int
+    ) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        // A real selection (start != end) or a jump we didn't cause ourselves
+        // means external state changed - drop our own buffered word so the
+        // very next key acts on the CURRENT actual text/selection instead of
+        // our stale internal assumptions.
+        if (newSelStart != newSelEnd || rawWordBuffer.isNotEmpty() && newSelEnd != oldSelEnd + 1 && newSelEnd != oldSelEnd - 1) {
+            resetWordState()
+        }
+    }
+
     private fun resetWordState() {
         rawWordBuffer.clear()
         committedWordLength = 0
@@ -633,13 +656,6 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         var typedChar = primaryCode.toChar()
         val directCommitMode = showingSymbols || showingNumpad
 
-        // Smart capitalization: any sentence-ending punctuation (., !, ?)
-        // marks that the NEXT space should trigger auto-capitalization - this
-        // now also applies when typed from the symbols page, not just the
-        // "." key on the main keyboard.
-        val isSentenceEnder = (typedChar == '.' || typedChar == '!' || typedChar == '?')
-        lastCommittedCharWasPeriod = false
-
         if (isShifted && mode != InputMode.BANGLA_TRADITIONAL && !directCommitMode) {
             typedChar = typedChar.uppercaseChar()
         }
@@ -657,23 +673,38 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
         if (typedChar == ' ') {
             handleSpace(ic)
-        } else if (isSentenceEnder && !directCommitMode && typedChar == '.') {
-            // "." on the main keyboard still goes through commitWordBoundary
-            // (word-boundary handling for suggestions etc.)
-            commitWordBoundary(ic, ".")
-            // Don't capitalize yet - only once a space follows this
-            // punctuation. handleSpace() checks lastCommittedCharWasPeriod.
-            lastCommittedCharWasPeriod = true
-            lastCommittedWasSpace = false
-        } else if (showingNumpad && numpadBangla && typedChar in latinToBanglaDigit.keys) {
+            return
+        }
+
+        // Point 0: typing ".", ",", ";", "!" or "?" automatically adds a
+        // trailing space right after it too, and starts the next word
+        // capitalized - so you don't need to manually press space after
+        // ending a sentence or a clause. Works from the symbols page too
+        // (where ; and ! live), but not from the numpad (its "." is a
+        // decimal point, not sentence punctuation).
+        if (!showingNumpad && (typedChar == '.' || typedChar == ',' || typedChar == ';' ||
+                typedChar == '!' || typedChar == '?')
+        ) {
+            if (rawWordBuffer.isNotEmpty()) {
+                commitWordBoundary(ic, "")
+            }
+            ic.commitText("$typedChar ", 1)
+            resetWordState()
+            lastCommittedWasSpace = true
+            lastCommittedCharWasPeriod = false
+            if (autoCap) {
+                capitalizeNext = true
+                syncShiftedDisplay(true)
+            }
+            return
+        }
+
+        if (showingNumpad && numpadBangla && typedChar in latinToBanglaDigit.keys) {
             ic.commitText(latinToBanglaDigit[typedChar].toString(), 1)
             lastCommittedWasSpace = false
         } else if (directCommitMode) {
             ic.commitText(typedChar.toString(), 1)
             lastCommittedWasSpace = false
-            // Smart capitalization: "!" and "?" typed from the symbols page
-            // count as sentence enders too.
-            if (isSentenceEnder) lastCommittedCharWasPeriod = true
         } else {
             appendToWord(ic, typedChar)
             lastCommittedWasSpace = false
