@@ -12,15 +12,15 @@
     <color name="text_primary">#E8FFF4</color>
     <color name="text_secondary">#8FD9B6</color>
 
-    <!-- Keyboard-only theme: light mint, matches the requested reference look -->
-    <color name="ime_bg">#EAF7EF</color>
-    <color name="ime_key_letter">#A9E6C4</color>
-    <color name="ime_key_letter_pressed">#8FD0AC</color>
-    <color name="ime_key_function">#1B4D3E</color>
-    <color name="ime_key_function_pressed">#123A2E</color>
-    <color name="ime_label_letter">#0D1F1A</color>
-    <color name="ime_label_function">#FFFFFF</color>
-    <color name="ime_text_primary">#0D1F1A</color>
+    <!-- Keyboard-only theme -->
+    <color name="ime_bg">#F6F9F3</color>
+    <color name="ime_key_letter">#C5E8C6</color>
+    <color name="ime_key_letter_pressed">#AEDCB0</color>
+    <color name="ime_key_function">#0F7A6D</color>
+    <color name="ime_key_function_pressed">#0C6759</color>
+    <color name="ime_label_letter">#174A3D</color>
+    <color name="ime_label_function">#D8E8C2</color>
+    <color name="ime_text_primary">#174A3D</color>
     <color name="ime_text_secondary">#3A5F52</color>
-    <color name="ime_suggestion_text">#1E4D3C</color>
+    <color name="ime_suggestion_text">#174A3D</color>
 </resources>
