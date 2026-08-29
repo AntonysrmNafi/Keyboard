@@ -171,25 +171,25 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         keyboardView.actionLongPressCodes = setOf(COPY_KEY_CODE, CUT_KEY_CODE, PASTE_KEY_CODE)
         keyboardView.onActionLongPress = { code -> handleClipboardAction(code) }
         getDrawable(R.drawable.sentiment_satisfied_24)?.mutate()?.let { drawable ->
-            drawable.setTint(android.graphics.Color.WHITE)
-            val enterDrawable = getDrawable(R.drawable.keyboard_return_24)
+            drawable.setTint(0xFFD8E8C2.toInt())
+            val enterDrawable = getDrawable(R.drawable.keyboard_return_24)?.mutate()?.apply {
+                setTint(0xFFD8E8C2.toInt())
+            }
             keyboardView.iconDrawables = buildMap {
                 put(EMOJI_PLACEHOLDER_CODE, drawable)
                 if (enterDrawable != null) put(-4, enterDrawable)
                 getDrawable(R.drawable.backspace_24)?.mutate()?.let { backspaceDrawable ->
-                    backspaceDrawable.setTint(android.graphics.Color.WHITE)
+                    backspaceDrawable.setTint(0xFFD8E8C2.toInt())
                     put(-5, backspaceDrawable)
                 }
             }
         }
-        // Shift icon is always white (outline at rest, solid fill when active), matching
-        // the Enter key's icon color. Background comes from the function-key paint in
-        // BlockVeilKeyboardView, same as Enter.
+        // Shift icon color matches the rest of the dark-key icon set.
         keyboardView.shiftIconRest = getDrawable(R.drawable.arrow_shape_up_24)?.mutate()?.apply {
-            setTint(android.graphics.Color.WHITE)
+            setTint(0xFFD8E8C2.toInt())
         }
         keyboardView.shiftIconActive = getDrawable(R.drawable.arrow_shape_up_24_filled)?.mutate()?.apply {
-            setTint(android.graphics.Color.WHITE)
+            setTint(0xFFD8E8C2.toInt())
         }
 
         suggestionStrip = view.findViewById(R.id.suggestion_strip)
