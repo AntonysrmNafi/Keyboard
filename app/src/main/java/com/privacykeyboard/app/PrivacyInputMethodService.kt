@@ -92,6 +92,13 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         121 to "6", 117 to "7", 105 to "8", 111 to "9", 112 to "0"
     )
 
+    // Problem 2: small corner hints on the symbols page's own number row
+    // (1..0), matching the reference keyboard's look.
+    private val symbolsNumberHints = mapOf(
+        49 to "\u00B9", 50 to "\u00B2", 51 to "\u00B3", 52 to "\u2074", 53 to "\u2075",
+        54 to "\u2076", 55 to "\u2077", 56 to "\u2078", 57 to "\u2079", 48 to "\u2070"
+    )
+
     private var clipboardManager: ClipboardManager? = null
     private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
 
@@ -463,15 +470,22 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         }
 
         val hideHints = SettingsStore.getBoolean(this, SettingsStore.KEY_HIDE_LONG_PRESS_HINTS, false)
-        keyboardView.hintsEnabled = !hideHints && !useNumberRow && !showingSymbols && !showingNumpad && mode != InputMode.BANGLA_TRADITIONAL
+        keyboardView.hintMap = if (showingSymbols) symbolsNumberHints else topRowHints
+        keyboardView.hintsEnabled = !hideHints && !showingNumpad &&
+            (showingSymbols || (!useNumberRow && mode != InputMode.BANGLA_TRADITIONAL))
 
         val spaceLabel = when {
-            showingSymbols -> "space"
             mode == InputMode.ENGLISH -> "\u25C0 English \u25B6"
             mode == InputMode.BANGLA_PHONETIC -> "\u25C0 বাংলা ফোনেটিক \u25B6"
             else -> "\u25C0 প্রভাত \u25B6"
         }
-        keyboardView.keyboard?.keys?.firstOrNull { it.codes.firstOrNull() == 32 }?.label = spaceLabel
+        // Problem 1+4: symbols1.xml has TWO keys with codes=32 - a small "space
+        // shortcut" icon key and the actual full-width space bar. firstOrNull()
+        // was matching the shortcut key by mistake (it's declared first in the
+        // XML), so the language label ended up on the wrong key while the real
+        // space bar was stuck showing literal "space" even outside the symbols
+        // page. The real space bar is always the last one declared.
+        keyboardView.keyboard?.keys?.lastOrNull { it.codes.firstOrNull() == 32 }?.label = spaceLabel
 
         // Point 1: invalidateAllKeys() only triggers a redraw, not a re-measure.
         // Force a fresh layout pass whenever the active keyboard object changes so
