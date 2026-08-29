@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Point 1: bold "align to the right" style icon for the space-shortcut key
+     on the symbols page. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M3,4 L21,4 L21,6.5 L3,6.5 Z M10,10.75 L21,10.75 L21,13.25 L10,13.25 Z M3,17.5 L21,17.5 L21,20 L3,20 Z" />
+</vector>
