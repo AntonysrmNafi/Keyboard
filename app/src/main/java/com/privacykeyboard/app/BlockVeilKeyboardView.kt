@@ -97,7 +97,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private var repeatCount = 0
 
     private val density = context.resources.displayMetrics.density
-    private val cornerRadius = 8f * density
+    private val cornerRadius = 5f * density
 
     // Theme: Light Key Background #C5E8C6, Light Key Text #174A3D,
     // Dark Key Background #0F7A6D, Dark Key Icon/Text #D8E8C2
@@ -206,12 +206,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             val rawLabel = key.label?.toString()
             if (!rawLabel.isNullOrEmpty()) {
                 val isSingleLetter = rawLabel.length == 1 && rawLabel[0].isLetter() && !isFunction && code != 32
-                val isAbcToggle = rawLabel.equals("ABC", ignoreCase = true) && (code == -22 || code == -24)
-                val label = when {
-                    shiftActive && isSingleLetter -> rawLabel.uppercase()
-                    isAbcToggle -> if (shiftActive) "ABC" else "abc"
-                    else -> rawLabel
-                }
+                val label = if (shiftActive && isSingleLetter) rawLabel.uppercase() else rawLabel
 
                 val labelPaint = when {
                     code == 32 -> spaceLabelPaint
