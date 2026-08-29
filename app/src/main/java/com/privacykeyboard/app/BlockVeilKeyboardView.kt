@@ -195,7 +195,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
             val drawable = iconDrawables[code]
             if (drawable != null) {
-                val iconSize = (rect.height() * 0.5f).toInt()
+                val iconSize = (rect.height() * 0.6f).toInt()
                 val left = (rect.centerX() - iconSize / 2f).toInt()
                 val top = (rect.centerY() - iconSize / 2f).toInt()
                 drawable.setBounds(left, top, left + iconSize, top + iconSize)
@@ -389,7 +389,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         }
 
     private fun isOnSpaceKey(x: Float, y: Float): Boolean {
-        val spaceKey = keyboard?.keys?.firstOrNull { it.codes.isNotEmpty() && it.codes[0] == 32 } ?: return false
+        val spaceKey = keyboard?.keys?.lastOrNull { it.codes.isNotEmpty() && it.codes[0] == 32 } ?: return false
         return x >= spaceKey.x && x <= spaceKey.x + spaceKey.width &&
             y >= spaceKey.y && y <= spaceKey.y + spaceKey.height
     }
