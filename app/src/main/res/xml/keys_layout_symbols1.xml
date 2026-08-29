@@ -3,8 +3,8 @@
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
     android:keyWidth="8%p"
     android:keyHeight="46dp"
-    android:horizontalGap="2%p"
-    android:verticalGap="6dp">
+    android:horizontalGap="1%p"
+    android:verticalGap="4dp">
 
     <Row>
         <Key android:codes="49" android:keyLabel="1" />
@@ -20,7 +20,7 @@
     </Row>
     <Row>
         <!-- The wide leading key here (under 1+2) is a space shortcut -->
-        <Key android:codes="32" android:keyLabel="&#8677;" android:keyWidth="16%p" />
+        <Key android:codes="-31" android:keyLabel="" android:keyWidth="16%p" />
         <Key android:codes="126" android:keyLabel="~" />
         <Key android:codes="92" android:keyLabel="\\" />
         <Key android:codes="60" android:keyLabel="&lt;" />
@@ -33,7 +33,7 @@
     <Row>
         <Key android:codes="64" android:keyLabel="@" />
         <Key android:codes="35" android:keyLabel="#" />
-        <Key android:codes="2547" android:keyLabel="Tk" />
+        <Key android:codes="2547" android:keyLabel="&#2547;" />
         <Key android:codes="37" android:keyLabel="%" />
         <Key android:codes="38" android:keyLabel="&amp;" />
         <Key android:codes="42" android:keyLabel="*" />
