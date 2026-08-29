@@ -99,25 +99,27 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private val density = context.resources.displayMetrics.density
     private val cornerRadius = 8f * density
 
-    private val letterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFA9E6C4.toInt() }
-    private val letterPressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF8FD0AC.toInt() }
-    private val functionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1B4D3E.toInt() }
-    private val functionPressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF123A2E.toInt() }
+    // Theme: Light Key Background #C5E8C6, Light Key Text #174A3D,
+    // Dark Key Background #0F7A6D, Dark Key Icon/Text #D8E8C2
+    private val letterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFC5E8C6.toInt() }
+    private val letterPressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFAEDCB0.toInt() }
+    private val functionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF0F7A6D.toInt() }
+    private val functionPressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF0C6759.toInt() }
 
     private val boldTypeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
 
     private val letterLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF0D1F1A.toInt()
+        color = 0xFF174A3D.toInt()
         textAlign = Paint.Align.CENTER
         textSize = context.resources.displayMetrics.scaledDensity * 18f
         typeface = boldTypeface
     }
     private val functionLabelPaint = Paint(letterLabelPaint).apply {
-        color = 0xFFFFFFFF.toInt()
+        color = 0xFFD8E8C2.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 13f
     }
     private val functionIconPaint = Paint(letterLabelPaint).apply {
-        color = 0xFFFFFFFF.toInt()
+        color = 0xFFD8E8C2.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 20f
     }
     private val spaceLabelPaint = Paint(letterLabelPaint).apply {
@@ -125,12 +127,12 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         textSize = context.resources.displayMetrics.scaledDensity * 13f
     }
     private val shiftRestIconPaint = Paint(letterLabelPaint).apply {
-        color = 0xFF0D1F1A.toInt()
+        color = 0xFF174A3D.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 20f
     }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.RIGHT
-        color = 0xFF0D1F1A.toInt()
+        color = 0xFF174A3D.toInt()
         textSize = density * 10f
     }
 
