@@ -189,6 +189,13 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
                     backspaceDrawable.setTint(0xFFD8E8C2.toInt())
                     put(-5, backspaceDrawable)
                 }
+                // Point 1: space-shortcut key on the symbols page - a light
+                // key, so it uses the light-key text color, not the dark-key
+                // icon color.
+                getDrawable(R.drawable.horizontal_align_right_24)?.mutate()?.let { shortcutDrawable ->
+                    shortcutDrawable.setTint(0xFF174A3D.toInt())
+                    put(SPACE_SHORTCUT_CODE, shortcutDrawable)
+                }
             }
         }
         // Shift icon color matches the rest of the dark-key icon set.
@@ -554,6 +561,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             MODE_SWITCH_CODE -> switchMode()
             EMOJI_PLACEHOLDER_CODE -> showEmojiPanel()
             BlockVeilKeyboardView.SPACER_KEY_CODE -> { /* Decorative spacer, no action */ }
+            SPACE_SHORTCUT_CODE -> handleCharacter(ic, 32)
             SYMBOLS_TOGGLE_CODE -> {
                 showingSymbols = true
                 symbolsPageTwo = false
@@ -991,6 +999,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     companion object {
         const val MODE_SWITCH_CODE = -10
         const val EMOJI_PLACEHOLDER_CODE = -30
+        const val SPACE_SHORTCUT_CODE = -31
         const val SYMBOLS_TOGGLE_CODE = -20
         const val SYMBOLS_MORE_CODE = -21
         const val ABC_RETURN_CODE = -22
