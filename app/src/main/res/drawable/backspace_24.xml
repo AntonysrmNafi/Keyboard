@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Problem 6: was drawing a whole thin "delete key" envelope shape on top of
+     our already-drawn key background, making it look hollow/thin. This is
+     just a bold X mark instead, matching a filled, chunky look. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-
     <path
         android:fillColor="#FF000000"
-        android:pathData="M22,3 L7,3 C6.31,3 5.77,3.35 5.41,3.88 L0,12 L5.41,20.11 C5.77,20.64 6.31,21 7,21 L22,21 C23.1,21 24,20.1 24,19 L24,5 C24,3.9 23.1,3 22,3 Z M19,15.59 L17.59,17 L14,13.41 L10.41,17 L9,15.59 L12.59,12 L9,8.41 L10.41,7 L14,10.59 L17.59,7 L19,8.41 L15.41,12 Z" />
+        android:pathData="M6.4,4.98 L12,10.59 L17.6,4.98 L19.02,6.4 L13.41,12 L19.02,17.6 L17.6,19.02 L12,13.41 L6.4,19.02 L4.98,17.6 L10.59,12 L4.98,6.4 Z" />
 </vector>
