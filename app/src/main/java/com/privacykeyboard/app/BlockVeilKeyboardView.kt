@@ -204,7 +204,12 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             val rawLabel = key.label?.toString()
             if (!rawLabel.isNullOrEmpty()) {
                 val isSingleLetter = rawLabel.length == 1 && rawLabel[0].isLetter() && !isFunction && code != 32
-                val label = if (shiftActive && isSingleLetter) rawLabel.uppercase() else rawLabel
+                val isAbcToggle = rawLabel.equals("ABC", ignoreCase = true) && (code == -22 || code == -24)
+                val label = when {
+                    shiftActive && isSingleLetter -> rawLabel.uppercase()
+                    isAbcToggle -> if (shiftActive) "ABC" else "abc"
+                    else -> rawLabel
+                }
 
                 val labelPaint = when {
                     code == 32 -> spaceLabelPaint
