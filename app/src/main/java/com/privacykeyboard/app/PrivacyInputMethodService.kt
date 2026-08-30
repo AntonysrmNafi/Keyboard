@@ -92,12 +92,20 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         121 to "6", 117 to "7", 105 to "8", 111 to "9", 112 to "0"
     )
 
-    // Problem 2: small corner hints on the symbols page's own number row
-    // (1..0), matching the reference keyboard's look.
+    // Problem Row1: shows a symbol preview (matching what's on the OTHER
+    // symbols page) instead of plain repeated numbers.
     private val symbolsNumberHints = mapOf(
-        49 to "\u00B9", 50 to "\u00B2", 51 to "\u00B3", 52 to "\u2074", 53 to "\u2075",
-        54 to "\u2076", 55 to "\u2077", 56 to "\u2078", 57 to "\u2079", 48 to "\u2070"
+        49 to "~", 50 to "`", 51 to "|", 52 to "\u2022", 53 to "\u221A",
+        54 to "\u03C0", 55 to "\u00F7", 56 to "\u00D7", 57 to "{", 48 to "}"
     )
+
+    // Row3: small top-right hints on specific keys, matching the reference.
+    private val symbolsRow3Hints = mapOf(
+        2547 to "$", 42 to "\u2605", 40 to "<", 41 to ">"
+    )
+
+    // Row4: small hint on the ":" key.
+    private val symbolsRow4Hints = mapOf(58 to "3")
 
     private var clipboardManager: ClipboardManager? = null
     private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
@@ -186,14 +194,13 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
                 put(EMOJI_PLACEHOLDER_CODE, drawable)
                 if (enterDrawable != null) put(-4, enterDrawable)
                 getDrawable(R.drawable.backspace_24)?.mutate()?.let { backspaceDrawable ->
-                    backspaceDrawable.setTint(0xFFD8E8C2.toInt())
+                    backspaceDrawable.setTint(0xFF0B5D48.toInt())
                     put(-5, backspaceDrawable)
                 }
-                // Point 1: space-shortcut key on the symbols page - a light
-                // key, so it uses the light-key text color, not the dark-key
-                // icon color.
+                // Point 1: space-shortcut key on the symbols page - now a
+                // dark function key, so it uses the light icon color.
                 getDrawable(R.drawable.horizontal_align_right_24)?.mutate()?.let { shortcutDrawable ->
-                    shortcutDrawable.setTint(0xFF174A3D.toInt())
+                    shortcutDrawable.setTint(0xFFD8E8C2.toInt())
                     put(SPACE_SHORTCUT_CODE, shortcutDrawable)
                 }
             }
@@ -204,6 +211,19 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         }
         keyboardView.shiftIconActive = getDrawable(R.drawable.arrow_shape_up_24_filled)?.mutate()?.apply {
             setTint(0xFFD8E8C2.toInt())
+        }
+
+        // Problem 8: the system's IME switcher strip at the very bottom of
+        // the screen (chevron + keyboard-switch icon) defaults to a dark/
+        // black background unless the IME's own window explicitly asks for
+        // a light one to match our light theme.
+        window?.window?.let { imeWindow ->
+            imeWindow.navigationBarColor = 0xFFF6F9F3.toInt()
+            if (android.os.Build.VERSION.SDK_INT >= 27) {
+                var flags = imeWindow.decorView.systemUiVisibility
+                flags = flags or android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                imeWindow.decorView.systemUiVisibility = flags
+            }
         }
 
         suggestionStrip = view.findViewById(R.id.suggestion_strip)
@@ -477,7 +497,11 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         }
 
         val hideHints = SettingsStore.getBoolean(this, SettingsStore.KEY_HIDE_LONG_PRESS_HINTS, false)
-        keyboardView.hintMap = if (showingSymbols) symbolsNumberHints else topRowHints
+        keyboardView.hintMap = if (showingSymbols) {
+            symbolsNumberHints + symbolsRow3Hints + symbolsRow4Hints
+        } else {
+            topRowHints
+        }
         keyboardView.hintsEnabled = !hideHints && !showingNumpad &&
             (showingSymbols || (!useNumberRow && mode != InputMode.BANGLA_TRADITIONAL))
 
