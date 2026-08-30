@@ -59,7 +59,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     // (including symbol keys like +, %, *, -) stay in the regular letter color so
     // every "this types something" key looks visually consistent, and only
     // "this changes what the keyboard is doing" keys stand out.
-    var functionKeyCodes: Set<Int> = setOf(-1, -5, -4, -20, -21, -22, -24, -25, -26, -30)
+    var functionKeyCodes: Set<Int> = setOf(-1, -5, -4, -20, -21, -22, -24, -25, -26, -30, -31)
     // Key codes whose label is a single icon glyph, drawn larger than multi-character labels.
     var iconKeyCodes: Set<Int> = setOf(-1, -5, -4)
     // Key codes drawn with an icon Drawable instead of a text label.
@@ -97,21 +97,25 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private var repeatCount = 0
 
     private val density = context.resources.displayMetrics.density
-    private val cornerRadius = 5f * density
+    private val cornerRadius = 8f * density
 
-    // Theme: Light Key Background #C5E8C6, Light Key Text #174A3D,
-    // Dark Key Background #0F7A6D, Dark Key Icon/Text #D8E8C2
-    private val letterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFC5E8C6.toInt() }
+    // Theme: Light Key Background #C6E8D0, Light Key Text #0A4D4A,
+    // Dark Key Background #0D6B5A, Dark Key Icon/Text #D8E8C2
+    private val letterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFC6E8D0.toInt() }
     private val letterPressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFAEDCB0.toInt() }
-    private val functionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF0F7A6D.toInt() }
-    private val functionPressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF0C6759.toInt() }
+    private val functionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF0D6B5A.toInt() }
+    private val functionPressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF0A5849.toInt() }
+    // Problem: Backspace gets its own distinct key color, not the shared
+    // dark-function color.
+    private val backspacePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFE8D9A0.toInt() }
+    private val backspacePressedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFDBC988.toInt() }
 
     private val boldTypeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
 
     private val letterLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF174A3D.toInt()
+        color = 0xFF0A4D4A.toInt()
         textAlign = Paint.Align.CENTER
-        textSize = context.resources.displayMetrics.scaledDensity * 18f
+        textSize = context.resources.displayMetrics.scaledDensity * 22f
         typeface = boldTypeface
     }
     private val functionLabelPaint = Paint(letterLabelPaint).apply {
@@ -122,18 +126,32 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         color = 0xFFD8E8C2.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 20f
     }
-    private val spaceLabelPaint = Paint(letterLabelPaint).apply {
-        color = 0xFF3A5F52.toInt()
-        textSize = context.resources.displayMetrics.scaledDensity * 13f
+    // Problem Row5: language name in the middle of the spacebar - normal
+    // weight (not bold), 17sp.
+    private val spaceLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF4A7A6F.toInt()
+        textAlign = Paint.Align.CENTER
+        textSize = context.resources.displayMetrics.scaledDensity * 17f
+        typeface = android.graphics.Typeface.DEFAULT
+    }
+    // The little arrows on either side of the spacebar's language name -
+    // smaller and lighter than the name itself.
+    private val spaceArrowPaint = Paint(spaceLabelPaint).apply {
+        color = 0xFF4A7A6F.toInt()
+        textSize = context.resources.displayMetrics.scaledDensity * 12f
     }
     private val shiftRestIconPaint = Paint(letterLabelPaint).apply {
-        color = 0xFF174A3D.toInt()
+        color = 0xFF0A4D4A.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 20f
+    }
+    // Problem Row5: "." key's label is smaller than the other regular keys.
+    private val dotLabelPaint = Paint(letterLabelPaint).apply {
+        textSize = context.resources.displayMetrics.scaledDensity * 16f
     }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.RIGHT
-        color = 0xFF174A3D.toInt()
-        textSize = density * 10f
+        color = 0xFF4A7A6F.toInt()
+        textSize = context.resources.displayMetrics.scaledDensity * 8f
     }
 
     private val rect = RectF()
@@ -159,6 +177,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             if (code == SPACER_KEY_CODE) continue
 
             val isShiftKey = code == -1
+            val isBackspace = code == -5
             val isFunction = functionKeyCodes.contains(code)
             val pressed = pressedKeyCode == code
 
@@ -167,6 +186,8 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             val bgPaint = when {
                 isShiftKey && pressed -> functionPressedPaint
                 isShiftKey -> functionPaint
+                isBackspace && pressed -> backspacePressedPaint
+                isBackspace -> backspacePaint
                 isFunction && pressed -> functionPressedPaint
                 isFunction -> functionPaint
                 pressed -> letterPressedPaint
@@ -195,7 +216,10 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
             val drawable = iconDrawables[code]
             if (drawable != null) {
-                val iconSize = (rect.height() * 0.6f).toInt()
+                // Problem Row4: Backspace icon rendered a bit smaller than
+                // the others.
+                val sizeFactor = if (isBackspace) 0.42f else 0.6f
+                val iconSize = (rect.height() * sizeFactor).toInt()
                 val left = (rect.centerX() - iconSize / 2f).toInt()
                 val top = (rect.centerY() - iconSize / 2f).toInt()
                 drawable.setBounds(left, top, left + iconSize, top + iconSize)
@@ -206,12 +230,44 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             val rawLabel = key.label?.toString()
             if (!rawLabel.isNullOrEmpty()) {
                 val isSingleLetter = rawLabel.length == 1 && rawLabel[0].isLetter() && !isFunction && code != 32
+
+                // Problem Row5: the spacebar's language label ("◀ English ▶")
+                // draws the arrows smaller/lighter than the language name,
+                // instead of one uniform size for the whole string.
+                if (code == 32 && rawLabel.length > 2 &&
+                    rawLabel.first() == '\u25C0' && rawLabel.last() == '\u25B6'
+                ) {
+                    val name = rawLabel.substring(1, rawLabel.length - 1).trim()
+                    val arrowGap = 6f * density
+                    val nameWidth = spaceLabelPaint.measureText(name)
+                    val leftArrowWidth = spaceArrowPaint.measureText("\u25C0")
+                    val rightArrowWidth = spaceArrowPaint.measureText("\u25B6")
+                    val totalWidth = leftArrowWidth + arrowGap + nameWidth + arrowGap + rightArrowWidth
+                    var x = rect.centerX() - totalWidth / 2f
+                    val arrowY = rect.centerY() - (spaceArrowPaint.descent() + spaceArrowPaint.ascent()) / 2f
+                    val nameY = rect.centerY() - (spaceLabelPaint.descent() + spaceLabelPaint.ascent()) / 2f
+                    val savedAlign = spaceArrowPaint.textAlign
+                    spaceArrowPaint.textAlign = Paint.Align.LEFT
+                    canvas.drawText("\u25C0", x, arrowY, spaceArrowPaint)
+                    x += leftArrowWidth + arrowGap
+                    val savedNameAlign = spaceLabelPaint.textAlign
+                    spaceLabelPaint.textAlign = Paint.Align.LEFT
+                    canvas.drawText(name, x, nameY, spaceLabelPaint)
+                    spaceLabelPaint.textAlign = savedNameAlign
+                    x += nameWidth + arrowGap
+                    canvas.drawText("\u25B6", x, arrowY, spaceArrowPaint)
+                    spaceArrowPaint.textAlign = savedAlign
+                    continue
+                }
+
                 val label = if (shiftActive && isSingleLetter) rawLabel.uppercase() else rawLabel
 
                 val labelPaint = when {
-                    code == 32 -> spaceLabelPaint
                     isFunction && iconKeyCodes.contains(code) -> functionIconPaint
                     isFunction -> functionLabelPaint
+                    // Problem Row5: the "." key's text is smaller than other
+                    // regular letter/symbol keys.
+                    code == 46 -> dotLabelPaint
                     else -> letterLabelPaint
                 }
                 val textY = rect.centerY() - (labelPaint.descent() + labelPaint.ascent()) / 2f
