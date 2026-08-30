@@ -5,8 +5,8 @@
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
     android:keyWidth="8%p"
     android:keyHeight="59dp"
-    android:horizontalGap="2%p"
-    android:verticalGap="6dp">
+    android:horizontalGap="1%p"
+    android:verticalGap="5dp">
 
     <Row>
         <Key android:codes="126" android:keyLabel="~" />
