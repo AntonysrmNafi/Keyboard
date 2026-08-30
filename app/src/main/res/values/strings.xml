@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">BlockVeil Keyboard</string>
-    <string name="build_marker">Build: 2026-08-30 row-hints+tab-icon+backspace-color+space-multipart+navbar-light</string>
+    <string name="build_marker">Build: 2026-08-30b full-100pct-width-restored</string>
     <string name="ime_subtype_label">Private Keyboard</string>
     <string name="tagline">Type your own Voice with FREEDOM</string>
     <string name="enable_keyboard">Enable Keyboard</string>
