@@ -152,6 +152,18 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         }
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // The Keyboard objects (englishKeyboardPlain etc.) compute their key
+        // positions from the screen width at the moment they're constructed.
+        // On rotation (or any other configuration change) that width can
+        // change, so the cached view and all its Keyboard objects need to be
+        // rebuilt fresh rather than reused with now-stale measurements. The
+        // parent-detach fix in onCreateInputView() means this is always safe
+        // even if Android calls it again before this takes effect.
+        cachedInputView = null
+    }
+
     override fun onDestroy() {
         clipboardListener?.let { clipboardManager?.removePrimaryClipChangedListener(it) }
         cachedInputView = null
@@ -161,11 +173,18 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     private var cachedInputView: View? = null
 
     override fun onCreateInputView(): View {
-        // Point 3: Dual keyboard fix - always return the SAME view instance.
-        // Recreating the view every time (e.g. after DictionaryUnlockActivity
-        // closes and the IME window is asked for its input view again) is what
-        // caused two keyboards to appear stacked on top of each other.
-        cachedInputView?.let { return it }
+        // Point 3: Dual keyboard fix - reuse the SAME view instance instead of
+        // recreating it every time. CRASH FIX: Android calls
+        // onCreateInputView() again on any configuration change (rotation,
+        // dark mode toggle, font size change, etc.) and immediately tries to
+        // attach whatever we return into ITS OWN container. Since our cached
+        // view was still attached to the PREVIOUS container from last time,
+        // ViewGroup.addView() threw "The specified child already has a
+        // parent" - it must be detached from its old parent first.
+        cachedInputView?.let { existing ->
+            (existing.parent as? android.view.ViewGroup)?.removeView(existing)
+            return existing
+        }
 
         val view = LayoutInflater.from(this).inflate(R.layout.input_view, null)
         cachedInputView = view
