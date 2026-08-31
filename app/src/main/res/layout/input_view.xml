@@ -120,7 +120,7 @@
 
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="310dp">
+        android:layout_height="280dp">
 
         <com.privacykeyboard.app.BlockVeilKeyboardView
             android:id="@+id/keyboard_view"
