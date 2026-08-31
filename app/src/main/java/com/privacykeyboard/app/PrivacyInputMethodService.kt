@@ -213,11 +213,13 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             setTint(0xFFD8E8C2.toInt())
         }
 
-        // Problem 8: the system's IME switcher strip at the very bottom of
-        // the screen (chevron + keyboard-switch icon) defaults to a dark/
-        // black background unless the IME's own window explicitly asks for
-        // a light one to match our light theme.
+        // Problem 8 / white gap: the system's IME switcher strip (chevron +
+        // keyboard-switch icon) at the very bottom, and any unclaimed space
+        // Android reserves for the IME window beyond our own content, both
+        // default to a plain background unless the window explicitly paints
+        // over them with our own theme color.
         window?.window?.let { imeWindow ->
+            imeWindow.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(0xFFF6F9F3.toInt()))
             imeWindow.navigationBarColor = 0xFFF6F9F3.toInt()
             if (android.os.Build.VERSION.SDK_INT >= 27) {
                 var flags = imeWindow.decorView.systemUiVisibility
