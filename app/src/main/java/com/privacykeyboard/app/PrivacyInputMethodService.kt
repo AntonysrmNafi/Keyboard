@@ -3,6 +3,7 @@ package com.privacykeyboard.app
 import android.content.ClipboardManager
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
+import android.inputmethodservice.InputMethodService.Insets
 import android.inputmethodservice.Keyboard
 import android.inputmethodservice.KeyboardView
 import android.media.AudioManager
@@ -315,7 +316,21 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
             refreshClipboardList()
         }
 
+        // Point: no candidates strip is ever shown, so make sure Android never
+        // reserves layout space for one below the keyboard content.
+        setCandidatesViewShown(false)
+
         return view
+    }
+
+    // Point: report zero extra top inset so the system treats the entire
+    // input view as the live keyboard area and never pads/reserves blank
+    // space around it beyond the view's own measured (wrap_content) height.
+    override fun onComputeInsets(outInsets: Insets) {
+        super.onComputeInsets(outInsets)
+        outInsets.contentTopInsets = 0
+        outInsets.visibleTopInsets = 0
+        outInsets.touchableInsets = Insets.TOUCHABLE_INSET_VISIBLE
     }
 
     // Point 3: some devices render a separate "extract view" (fullscreen editing
