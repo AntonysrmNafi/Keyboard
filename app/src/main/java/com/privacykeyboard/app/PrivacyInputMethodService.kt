@@ -330,7 +330,7 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         super.onComputeInsets(outInsets)
         outInsets.contentTopInsets = 0
         outInsets.visibleTopInsets = 0
-        outInsets.touchableInsets = Insets.TOUCHABLE_INSET_VISIBLE
+        outInsets.touchableInsets = InputMethodService.TOUCHABLE_INSET_VISIBLE
     }
 
     // Point 3: some devices render a separate "extract view" (fullscreen editing
