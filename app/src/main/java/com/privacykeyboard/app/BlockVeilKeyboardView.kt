@@ -156,15 +156,33 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
     private val rect = RectF()
 
+    // Point 2: the stock KeyboardView base class ignores the height it's
+    // actually given and just uses the Keyboard XML's own computed row-height
+    // sum. Since the container is now a fixed height everywhere (letters,
+    // shift, symbols, emoji, clipboard all the same), this scales whatever is
+    // drawn to exactly fill that fixed height - without needing to touch any
+    // XML file's row heights (including English's).
+    private val verticalScale: Float
+        get() {
+            val kbHeight = keyboard?.height ?: 0
+            if (kbHeight <= 0 || height <= 0) return 1f
+            return height.toFloat() / kbHeight.toFloat()
+        }
+
     init {
         isPreviewEnabled = false
     }
 
     override fun onDraw(canvas: Canvas) {
+        val scale = verticalScale
+        canvas.save()
         try {
+            canvas.scale(1f, scale)
             drawKeyboard(canvas)
         } catch (t: Throwable) {
             android.util.Log.e("BlockVeilKeyboardView", "onDraw failed, skipping this frame", t)
+        } finally {
+            canvas.restore()
         }
     }
 
@@ -438,16 +456,21 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         longPressRunnable = null
     }
 
-    private fun keyAt(x: Float, y: Float): Keyboard.Key? =
-        keyboard?.keys?.firstOrNull {
+    private fun keyAt(x: Float, y: Float): Keyboard.Key? {
+        val scale = verticalScale
+        val scaledY = if (scale > 0f) y / scale else y
+        return keyboard?.keys?.firstOrNull {
             it.codes.firstOrNull() != SPACER_KEY_CODE &&
-                x >= it.x && x <= it.x + it.width && y >= it.y && y <= it.y + it.height
+                x >= it.x && x <= it.x + it.width && scaledY >= it.y && scaledY <= it.y + it.height
         }
+    }
 
     private fun isOnSpaceKey(x: Float, y: Float): Boolean {
         val spaceKey = keyboard?.keys?.lastOrNull { it.codes.isNotEmpty() && it.codes[0] == 32 } ?: return false
+        val scale = verticalScale
+        val scaledY = if (scale > 0f) y / scale else y
         return x >= spaceKey.x && x <= spaceKey.x + spaceKey.width &&
-            y >= spaceKey.y && y <= spaceKey.y + spaceKey.height
+            scaledY >= spaceKey.y && scaledY <= spaceKey.y + spaceKey.height
     }
 
     companion object {
