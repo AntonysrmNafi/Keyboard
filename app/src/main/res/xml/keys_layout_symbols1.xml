@@ -47,7 +47,7 @@
     </Row>
     <Row>
         <!-- More-options toggle: switches to the second symbols page -->
-        <Key android:codes="-1" android:keyLabel="&#8679;" android:keyWidth="14%p" android:horizontalGap="0dp" android:isModifier="true" android:isSticky="true" />
+        <Key android:codes="-1" android:keyLabel="&#8679;" android:keyWidth="13%p" android:horizontalGap="0dp" android:isModifier="true" android:isSticky="true" />
         <Key android:codes="122" android:keyLabel="z" android:keyWidth="9%p" />
         <Key android:codes="120" android:keyLabel="x" android:keyWidth="9%p" />
         <Key android:codes="99" android:keyLabel="c" android:keyWidth="9%p" />
