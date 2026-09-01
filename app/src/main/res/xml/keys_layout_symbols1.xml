@@ -47,7 +47,7 @@
     </Row>
     <Row>
         <!-- More-options toggle: switches to the second symbols page -->
-        <Key android:codes="-21" android:keyLabel="=\&lt;" android:keyWidth="15%p" android:horizontalGap="0dp" />
+        <Key android:codes="-21" android:keyLabel="=\&lt;" android:keyWidth="14%p" android:horizontalGap="0dp" />
         <Key android:codes="33" android:keyLabel="!" />
         <Key android:codes="34" android:keyLabel="&quot;" />
         <Key android:codes="39" android:keyLabel="'" />
