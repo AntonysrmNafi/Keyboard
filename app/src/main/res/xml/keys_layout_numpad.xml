@@ -4,9 +4,9 @@
      resizes the keyboard window. -->
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
     android:keyWidth="20%p"
-    android:keyHeight="59dp"
-    android:horizontalGap="2%p"
-    android:verticalGap="6dp">
+    android:keyHeight="56dp"
+    android:horizontalGap="1%p"
+    android:verticalGap="5dp">
 
     <Row>
         <Key android:codes="43" android:keyLabel="+" />
