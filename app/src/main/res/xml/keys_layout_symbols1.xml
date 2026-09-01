@@ -58,10 +58,10 @@
         <Key android:codes="-5" android:keyLabel="&#9003;" android:keyWidth="14%p" />
     </Row>
     <Row android:rowEdgeFlags="bottom">
-        <Key android:codes="-22" android:keyLabel="ABC" android:keyWidth="13%p" android:horizontalGap="0dp" />
+        <Key android:codes="-22" android:keyLabel="ABC" android:keyWidth="12%p" android:horizontalGap="0dp" />
         <Key android:codes="44" android:keyLabel="," android:keyWidth="12%p" />
-        <Key android:codes="32" android:keyLabel="space" android:keyWidth="43%p" />
+        <Key android:codes="32" android:keyLabel="space" android:keyWidth="45%p" />
         <Key android:codes="46" android:keyLabel="." android:keyWidth="12%p" />
-        <Key android:codes="-4" android:keyLabel="Go" android:keyWidth="15%p" />
+        <Key android:codes="-4" android:keyLabel="Go" android:keyWidth="14%p" />
     </Row>
 </Keyboard>
