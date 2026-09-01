@@ -23,7 +23,7 @@
     </Row>
     <Row>
         <!-- The wide leading key here (under 1+2) is a space shortcut -->
-        <Key android:codes="-31" android:keyLabel="" android:keyWidth="18%p" />
+        <Key android:codes="-31" android:keyLabel="" android:keyWidth="19%p" />
         <Key android:codes="126" android:keyLabel="~" />
         <Key android:codes="92" android:keyLabel="\\" />
         <Key android:codes="60" android:keyLabel="&lt;" />
