@@ -2,7 +2,7 @@
 <!-- Point 5: matches Ridmik's ?123 symbols page structure -->
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
     android:keyWidth="9%p"
-    android:keyHeight="50dp"
+    android:keyHeight="46dp"
     android:horizontalGap="1%p"
     android:verticalGap="5dp">
 
