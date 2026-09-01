@@ -10,7 +10,7 @@
          two values only to resize just this row without affecting the
          other rows below (which keep using the Keyboard-level defaults). -->
     <Row android:keyHeight="35dp" android:keyWidth="9%p">
-        <Key android:codes="49" android:keyLabel="1" />
+        <Key android:codes="49" android:keyLabel="1" android:horizontalGap="0dp" />
         <Key android:codes="50" android:keyLabel="2" />
         <Key android:codes="51" android:keyLabel="3" />
         <Key android:codes="52" android:keyLabel="4" />
@@ -23,7 +23,7 @@
     </Row>
     <Row>
         <!-- The wide leading key here (under 1+2) is a space shortcut -->
-        <Key android:codes="-31" android:keyLabel="" android:keyWidth="19%p" />
+        <Key android:codes="-31" android:keyLabel="" android:keyWidth="19%p" android:horizontalGap="0dp" />
         <Key android:codes="126" android:keyLabel="~" />
         <Key android:codes="92" android:keyLabel="\\" />
         <Key android:codes="60" android:keyLabel="&lt;" />
@@ -34,7 +34,7 @@
         <Key android:codes="93" android:keyLabel="]" />
     </Row>
     <Row>
-        <Key android:codes="64" android:keyLabel="@" />
+        <Key android:codes="64" android:keyLabel="@" android:horizontalGap="0dp" />
         <Key android:codes="35" android:keyLabel="#" />
         <Key android:codes="2547" android:keyLabel="&#2547;" />
         <Key android:codes="37" android:keyLabel="%" />
@@ -47,7 +47,7 @@
     </Row>
     <Row>
         <!-- More-options toggle: switches to the second symbols page -->
-        <Key android:codes="-21" android:keyLabel="=\&lt;" android:keyWidth="15%p" />
+        <Key android:codes="-21" android:keyLabel="=\&lt;" android:keyWidth="15%p" android:horizontalGap="0dp" />
         <Key android:codes="33" android:keyLabel="!" />
         <Key android:codes="34" android:keyLabel="&quot;" />
         <Key android:codes="39" android:keyLabel="'" />
@@ -58,7 +58,7 @@
         <Key android:codes="-5" android:keyLabel="&#9003;" android:keyWidth="15%p" />
     </Row>
     <Row android:rowEdgeFlags="bottom">
-        <Key android:codes="-22" android:keyLabel="ABC" android:keyWidth="13%p" />
+        <Key android:codes="-22" android:keyLabel="ABC" android:keyWidth="13%p" android:horizontalGap="0dp" />
         <Key android:codes="44" android:keyLabel="," android:keyWidth="12%p" />
         <Key android:codes="32" android:keyLabel="space" android:keyWidth="42%p" />
         <Key android:codes="46" android:keyLabel="." android:keyWidth="12%p" />
