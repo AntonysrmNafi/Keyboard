@@ -4,7 +4,7 @@
      the main keyboard no longer resizes the keyboard window. -->
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
     android:keyWidth="10%p"
-    android:keyHeight="59dp"
+    android:keyHeight="46dp"
     android:horizontalGap="1%p"
     android:verticalGap="5dp">
 
