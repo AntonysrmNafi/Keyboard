@@ -49,7 +49,7 @@
 
     <!-- Row 4: ?123 ↔ ®©™\<> Backspace -->
     <Row>
-        <Key android:codes="-24" android:keyLabel="\?123" android:keyWidth="15%p" android:horizontalGap="0dp" />
+        <Key android:codes="-24" android:keyLabel="\?123" android:keyWidth="14%p" android:horizontalGap="0dp" />
         <Key android:codes="8596" android:keyLabel="&#8596;" />
         <Key android:codes="174" android:keyLabel="&#174;" />
         <Key android:codes="169" android:keyLabel="&#169;" />
