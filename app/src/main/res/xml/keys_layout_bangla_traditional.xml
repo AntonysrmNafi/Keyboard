@@ -5,7 +5,7 @@
     android:horizontalGap="1%p"
     android:verticalGap="5dp">
 
-    <Row>
+    <Row android:keyHeight="35dp" android:keyWidth="9%p">
         <Key android:codes="49" android:keyLabel="1" />
         <Key android:codes="50" android:keyLabel="2" />
         <Key android:codes="51" android:keyLabel="3" />
@@ -54,11 +54,11 @@
         <Key android:codes="-5" android:keyLabel="&#9003;" android:keyWidth="15%p" />
     </Row>
     <Row>
-        <Key android:codes="-20" android:keyLabel="\?123" android:keyWidth="13%p" />
+        <Key android:codes="-20" android:keyLabel="\?123" android:keyWidth="12%p" />
         <Key android:codes="-30" android:keyLabel="&#128522;" android:keyWidth="12%p" />
         <Key android:codes="44" android:keyLabel="," android:keyWidth="12%p" />
         <Key android:codes="32" android:keyLabel="space" android:keyWidth="36%p" />
-        <Key android:codes="46" android:keyLabel="." android:keyWidth="12%p" />
+        <Key android:codes="46" android:keyLabel="." android:keyWidth="11%p" />
         <Key android:codes="-4" android:keyLabel="Go" android:keyWidth="15%p" />
     </Row>
 </Keyboard>
