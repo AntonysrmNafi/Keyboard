@@ -47,14 +47,14 @@
     </Row>
     <Row>
         <!-- More-options toggle: switches to the second symbols page -->
-        <Key android:codes="-1" android:keyLabel="&#8679;" android:keyWidth="13%p" android:horizontalGap="0dp" android:isModifier="true" android:isSticky="true" />
-        <Key android:codes="122" android:keyLabel="z" android:keyWidth="9%p" />
-        <Key android:codes="120" android:keyLabel="x" android:keyWidth="9%p" />
-        <Key android:codes="99" android:keyLabel="c" android:keyWidth="9%p" />
-        <Key android:codes="118" android:keyLabel="v" android:keyWidth="9%p" />
-        <Key android:codes="98" android:keyLabel="b" android:keyWidth="9%p" />
-        <Key android:codes="110" android:keyLabel="n" android:keyWidth="9%p" />
-        <Key android:codes="109" android:keyLabel="m" android:keyWidth="9%p" />
+        <Key android:codes="-21" android:keyLabel="=\&lt;" android:keyWidth="14%p" android:horizontalGap="0dp" />
+        <Key android:codes="33" android:keyLabel="!" />
+        <Key android:codes="34" android:keyLabel="&quot;" />
+        <Key android:codes="39" android:keyLabel="'" />
+        <Key android:codes="58" android:keyLabel=":" />
+        <Key android:codes="59" android:keyLabel=";" />
+        <Key android:codes="47" android:keyLabel="/" />
+        <Key android:codes="63" android:keyLabel="?" />
         <Key android:codes="-5" android:keyLabel="&#9003;" android:keyWidth="14%p" />
     </Row>
     <Row android:rowEdgeFlags="bottom">
