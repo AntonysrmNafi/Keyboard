@@ -122,6 +122,14 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         color = 0xFFD8E8C2.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 13f
     }
+    // Point: "=<" (more-options toggle on Symbols page) reads visually bigger
+    // than Shift's compact icon at the same 13sp used by ?123/ABC, so it gets
+    // its own smaller size instead of shrinking functionLabelPaint (which
+    // would also shrink ?123/ABC).
+    private val moreOptionsLabelPaint = Paint(letterLabelPaint).apply {
+        color = 0xFFD8E8C2.toInt()
+        textSize = context.resources.displayMetrics.scaledDensity * 11f
+    }
     private val functionIconPaint = Paint(letterLabelPaint).apply {
         color = 0xFFD8E8C2.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 20f
@@ -282,6 +290,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
                 val labelPaint = when {
                     isFunction && iconKeyCodes.contains(code) -> functionIconPaint
+                    code == -21 -> moreOptionsLabelPaint
                     isFunction -> functionLabelPaint
                     // Problem Row5: the "." key's text is smaller than other
                     // regular letter/symbol keys.
