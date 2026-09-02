@@ -6,7 +6,7 @@
     android:verticalGap="5dp">
 
     <!-- Row 1: ☞◑⊕✘✔✪∞⇨➤✆ -->
-    <Row android:keyHeight="46dp" android:keyWidth="10%p" android:horizontalGap="0dp" >
+    <Row android:keyHeight="35dp" android:keyWidth="9%p" android:horizontalGap="0dp" >
         <Key android:codes="9758" android:keyLabel="&#9758;" />
         <Key android:codes="9681" android:keyLabel="&#9681;" />
         <Key android:codes="8853" android:keyLabel="&#8853;" />
