@@ -24,6 +24,8 @@ import android.widget.TextView
 class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardActionListener {
 
     private lateinit var keyboardView: BlockVeilKeyboardView
+    private lateinit var keyboardFrame: android.widget.FrameLayout
+    private var keyboardFrameBaseHeightPx: Int = 0
     private lateinit var suggestionStrip: LinearLayout
     private lateinit var textToolButton: TextView
     private lateinit var toolbarIconsGroup: LinearLayout
@@ -248,6 +250,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         }
 
         suggestionStrip = view.findViewById(R.id.suggestion_strip)
+        keyboardFrame = view.findViewById(R.id.keyboard_frame)
+        keyboardFrameBaseHeightPx = keyboardFrame.layoutParams.height
         textToolButton = view.findViewById(R.id.icon_text_tool)
         toolbarIconsGroup = view.findViewById(R.id.toolbar_icons_group)
         suggestionsGroup = view.findViewById(R.id.suggestions_group)
