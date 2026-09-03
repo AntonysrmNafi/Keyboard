@@ -53,6 +53,10 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
     // touching English at all.
     private lateinit var symbolsKeyboard1: Keyboard
     private lateinit var symbolsKeyboard2: Keyboard
+    // Point: Bangla modes (phonetic + traditional) now get their own symbols
+    // pages instead of sharing English's, so they can be edited independently.
+    private lateinit var banglaSymbolsKeyboard1: Keyboard
+    private lateinit var banglaSymbolsKeyboard2: Keyboard
     private lateinit var numpadKeyboard: Keyboard
 
     private lateinit var suggestion1: TextView
@@ -197,6 +201,8 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         traditionalKeyboard = Keyboard(this, R.xml.keys_layout_bangla_traditional)
         symbolsKeyboard1 = Keyboard(this, R.xml.keys_layout_symbols1)
         symbolsKeyboard2 = Keyboard(this, R.xml.keys_layout_symbols2)
+        banglaSymbolsKeyboard1 = Keyboard(this, R.xml.keys_layout_bangla_symbols1)
+        banglaSymbolsKeyboard2 = Keyboard(this, R.xml.keys_layout_bangla_symbols2)
         numpadKeyboard = Keyboard(this, R.xml.keys_layout_numpad)
 
         keyboardView = view.findViewById(R.id.keyboard_view)
@@ -513,7 +519,9 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
 
         keyboardView.keyboard = when {
             showingNumpad -> numpadKeyboard
+            showingSymbols && symbolsPageTwo && mode != InputMode.ENGLISH -> banglaSymbolsKeyboard2
             showingSymbols && symbolsPageTwo -> symbolsKeyboard2
+            showingSymbols && mode != InputMode.ENGLISH -> banglaSymbolsKeyboard1
             showingSymbols -> symbolsKeyboard1
             mode == InputMode.BANGLA_TRADITIONAL -> traditionalKeyboard
             useNumberRow && useLarge -> englishKeyboardWithNumRowLarge
