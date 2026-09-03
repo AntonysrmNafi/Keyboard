@@ -952,13 +952,30 @@ class PrivacyInputMethodService : InputMethodService(), KeyboardView.OnKeyboardA
         hideClipboardPanel()
         emojiPanel.visibility = View.VISIBLE
         keyboardView.visibility = View.INVISIBLE
+        // Point: instead of just hiding the strip (which shrinks the whole
+        // window and, since the window is bottom-anchored, pushes the
+        // visible content DOWN the screen), grow keyboardFrame by the
+        // strip's own height so the total window height stays the same and
+        // emoji_panel actually fills that reclaimed space, starting flush
+        // at the very top the same way the normal keyboard does.
+        val stripHeight = suggestionStrip.height
         suggestionStrip.visibility = View.GONE
+        if (stripHeight > 0 && keyboardFrameBaseHeightPx > 0) {
+            val params = keyboardFrame.layoutParams
+            params.height = keyboardFrameBaseHeightPx + stripHeight
+            keyboardFrame.layoutParams = params
+        }
     }
 
     private fun hideEmojiPanel() {
         if (!::emojiPanel.isInitialized) return
         emojiPanel.visibility = View.GONE
         keyboardView.visibility = View.VISIBLE
+        if (keyboardFrameBaseHeightPx > 0 && keyboardFrame.layoutParams.height != keyboardFrameBaseHeightPx) {
+            val params = keyboardFrame.layoutParams
+            params.height = keyboardFrameBaseHeightPx
+            keyboardFrame.layoutParams = params
+        }
         suggestionStrip.visibility = View.VISIBLE
         updateTopStripVisibility()
     }
