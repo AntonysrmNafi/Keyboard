@@ -6,16 +6,16 @@
     android:verticalGap="5dp">
 
     <Row android:keyHeight="35dp" android:keyWidth="9%p">
-        <Key android:codes="49" android:keyLabel="1" android:horizontalGap="0dp" />
-        <Key android:codes="50" android:keyLabel="2" />
-        <Key android:codes="51" android:keyLabel="3" />
-        <Key android:codes="52" android:keyLabel="4" />
-        <Key android:codes="53" android:keyLabel="5" />
-        <Key android:codes="54" android:keyLabel="6" />
-        <Key android:codes="55" android:keyLabel="7" />
-        <Key android:codes="56" android:keyLabel="8" />
-        <Key android:codes="57" android:keyLabel="9" />
-        <Key android:codes="48" android:keyLabel="0" />
+        <Key android:codes="2535" android:keyLabel="১" android:horizontalGap="0dp" />
+        <Key android:codes="2536" android:keyLabel="২" />
+        <Key android:codes="2537" android:keyLabel="৩" />
+        <Key android:codes="2538" android:keyLabel="৪" />
+        <Key android:codes="2539" android:keyLabel="৫" />
+        <Key android:codes="2540" android:keyLabel="৬" />
+        <Key android:codes="2541" android:keyLabel="৭" />
+        <Key android:codes="2542" android:keyLabel="৮" />
+        <Key android:codes="2543" android:keyLabel="৯" />
+        <Key android:codes="2534" android:keyLabel="০" />
     </Row>
     <Row>
         <Key android:codes="2486" android:keyLabel="দ" android:horizontalGap="0dp" />
