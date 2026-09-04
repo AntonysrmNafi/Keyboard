@@ -31,7 +31,7 @@
         <Key android:codes="2503" android:keyLabel="ে" />
         <Key android:codes="2507" android:keyLabel="ো" />
     </Row>
-    <Row>
+    <Row android:keyWidth="3%p">
         <Key android:codes="-99" android:keyLabel="" android:keyWidth="4%p" android:horizontalGap="0dp" />
         <Key android:codes="2494" android:keyLabel="া" android:horizontalGap="0dp" />
         <Key android:codes="2508" android:keyLabel="স" />
@@ -44,7 +44,7 @@
         <Key android:codes="2502" android:keyLabel="ল" />
         <Key android:codes="-99" android:keyLabel="" android:keyWidth="4%p" />
     </Row>
-    <Row>
+    <Row android:keyWidth="3%p">
         <Key android:codes="-1" android:keyLabel="&#8679;" android:keyWidth="14%p" android:horizontalGap="0dp" android:isModifier="true" android:isSticky="true" />
         <Key android:codes="2527" android:keyLabel="য়" />
         <Key android:codes="2506" android:keyLabel="শ" />
