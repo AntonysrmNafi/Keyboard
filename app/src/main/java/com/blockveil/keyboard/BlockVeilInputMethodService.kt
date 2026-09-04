@@ -26,6 +26,10 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     private lateinit var keyboardView: BlockVeilKeyboardView
     private lateinit var keyboardFrame: android.widget.FrameLayout
     private var keyboardFrameBaseHeightPx: Int = 0
+    private lateinit var actionToast: LinearLayout
+    private lateinit var actionToastText: TextView
+    private val actionToastHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var actionToastHideRunnable: Runnable? = null
     private lateinit var suggestionStrip: LinearLayout
     private lateinit var textToolButton: TextView
     private lateinit var toolbarIconsGroup: LinearLayout
@@ -172,6 +176,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     override fun onDestroy() {
         clipboardListener?.let { clipboardManager?.removePrimaryClipChangedListener(it) }
+        actionToastHideRunnable?.let { actionToastHandler.removeCallbacks(it) }
         cachedInputView = null
         super.onDestroy()
     }
@@ -258,6 +263,8 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         suggestionStrip = view.findViewById(R.id.suggestion_strip)
         keyboardFrame = view.findViewById(R.id.keyboard_frame)
         keyboardFrameBaseHeightPx = keyboardFrame.layoutParams.height
+        actionToast = view.findViewById(R.id.action_toast)
+        actionToastText = view.findViewById(R.id.action_toast_text)
         textToolButton = view.findViewById(R.id.icon_text_tool)
         toolbarIconsGroup = view.findViewById(R.id.toolbar_icons_group)
         suggestionsGroup = view.findViewById(R.id.suggestions_group)
@@ -667,6 +674,26 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         }
     }
 
+    // Point: replaces the plain system Toast (which can't reliably show a
+    // custom icon on modern Android, especially from a background/IME
+    // process) with our own small pill-shaped popup drawn inside the
+    // keyboard's own view, showing the app logo next to the message -
+    // matching the look of other keyboards' "Text copied" style popups.
+    private fun showActionToast(message: String) {
+        if (!::actionToast.isInitialized) return
+        actionToastText.text = message
+        actionToastHideRunnable?.let { actionToastHandler.removeCallbacks(it) }
+        actionToast.visibility = View.VISIBLE
+        actionToast.alpha = 1f
+        val hideRunnable = Runnable {
+            actionToast.animate().alpha(0f).setDuration(150).withEndAction {
+                actionToast.visibility = View.GONE
+            }.start()
+        }
+        actionToastHideRunnable = hideRunnable
+        actionToastHandler.postDelayed(hideRunnable, 1200)
+    }
+
     private fun handleClipboardAction(code: Int) {
         val ic = currentInputConnection ?: return
         giveKeyFeedback()
@@ -674,18 +701,18 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             COPY_KEY_CODE -> {
                 ic.performContextMenuAction(android.R.id.selectAll)
                 ic.performContextMenuAction(android.R.id.copy)
-                android.widget.Toast.makeText(this, "Text Copied", android.widget.Toast.LENGTH_SHORT).show()
+                showActionToast("Text Copied")
             }
             CUT_KEY_CODE -> {
                 ic.performContextMenuAction(android.R.id.selectAll)
                 ic.performContextMenuAction(android.R.id.cut)
                 resetWordState()
-                android.widget.Toast.makeText(this, "Text Cut", android.widget.Toast.LENGTH_SHORT).show()
+                showActionToast("Text Cut")
             }
             PASTE_KEY_CODE -> {
                 ic.performContextMenuAction(android.R.id.paste)
                 resetWordState()
-                android.widget.Toast.makeText(this, "Text Pasted", android.widget.Toast.LENGTH_SHORT).show()
+                showActionToast("Text Pasted")
             }
         }
     }
