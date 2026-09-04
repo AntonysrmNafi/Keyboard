@@ -18,7 +18,7 @@
         <Key android:codes="2534" android:keyLabel="০" />
     </Row>
     <Row android:keyWidth="7%p">
-        <Key android:codes="2486" android:keyLabel="দ" android:horizontalGap="1%p" />
+        <Key android:codes="2486" android:keyLabel="দ" android:horizontalGap="3%p" />
         <Key android:codes="2498" android:keyLabel="ূ" />
         <Key android:codes="2496" android:keyLabel="ী" />
         <Key android:codes="2500" android:keyLabel="র" />
