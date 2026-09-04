@@ -1,2 +1,2 @@
-rootProject.name = "privacy-keyboard"
+rootProject.name = "blockveil-keyboard"
 include(":app")
