@@ -8,3 +8,4 @@
 # Keep line numbers in stack traces for crash triage, but strip the source file name.
 -keepattributes SourceFile
 -renamesourcefileattribute SourceFile
+ 
