@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.privacykeyboard.app"
+    namespace = "com.blockveil.keyboard"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.privacykeyboard.app"
+        applicationId = "com.blockveil.keyboard"
         // Point 1.3: raised from 21 to 23 - EncryptedSharedPreferences (used to
         // encrypt every sensitive file this app writes) needs the Android Keystore
         // APIs that only exist from Android 6.0 (API 23) onward.
