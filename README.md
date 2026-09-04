@@ -1,6 +1,19 @@
-# Privacy Keyboard (Android)
+# BlockVeil Keyboard (Android)
+
+> **⚠️ Status: Under active development — not ready to install yet.**
+> This project is still being built out and is going through frequent structural changes, bug fixes, and layout tuning. Expect things to be incomplete or to change without notice. Please **do not download or install this app yet**; wait for a tagged release announcement. Thanks for your patience while this comes together properly.
 
 Fully offline Android IME (input method / keyboard app).
+
+## Project status
+
+BlockVeil Keyboard is a work in progress. Core typing, dictionary, and settings functionality exists and is being actively refined, but the app has not reached a stable, install-ready state:
+
+- Layouts, spacing, and sizing across keyboard modes are still being tuned for consistency
+- Some features are placeholders (e.g. the emoji picker) and not yet functional
+- Breaking changes can land at any time while the architecture settles
+
+There is no estimated completion date. A release will be announced here once the app is genuinely ready for everyday use. Building and running it from source for development/testing purposes is fine, just don't expect a polished, daily-driver experience yet.
 
 ## Privacy guarantees
 
@@ -24,7 +37,7 @@ Tap the "Aa/অ" key to cycle: English -> Bangla phonetic -> Bangla traditional 
 2. Open this folder as a project (File > Open)
 3. Let Gradle sync
 4. Run on a device or emulator (green Run button)
-5. Enable the keyboard: Settings > System > Languages & input > On-screen keyboard > Manage keyboards > turn on "Privacy Keyboard"
+5. Enable the keyboard: Settings > System > Languages & input > On-screen keyboard > Manage keyboards > turn on "BlockVeil Keyboard"
 6. Switch to it from the keyboard switch icon while typing in any text field
 
 ## Build an installable APK without Android Studio (GitHub Actions)
