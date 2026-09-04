@@ -1,23 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="@color/ime_bg"
-    android:paddingTop="6dp"
-    android:paddingBottom="0dp">
+    android:layout_height="wrap_content">
 
     <LinearLayout
-        android:id="@+id/suggestion_strip"
         android:layout_width="match_parent"
-        android:layout_height="42dp"
-        android:orientation="horizontal"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
         android:background="@color/ime_bg"
-        android:gravity="center_vertical">
+        android:paddingTop="6dp"
+        android:paddingBottom="0dp">
 
-        <TextView
-            android:id="@+id/icon_text_tool"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:id="@+id/suggestion_strip"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:orientation="horizontal"
+            android:background="@color/ime_bg"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/icon_text_tool"
+                android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:gravity="center"
@@ -240,4 +244,38 @@
 
     </FrameLayout>
 
-</LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/action_toast"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_action_toast"
+        android:paddingStart="14dp"
+        android:paddingEnd="18dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:visibility="gone"
+        android:elevation="8dp">
+
+        <ImageView
+            android:id="@+id/action_toast_logo"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginEnd="10dp"
+            android:src="@drawable/ic_launcher"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/action_toast_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFFFF"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+</FrameLayout>
