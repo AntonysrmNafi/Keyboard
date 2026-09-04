@@ -18,7 +18,7 @@
         <Key android:codes="2534" android:keyLabel="০" />
     </Row>
     <Row android:keyWidth="7%p">
-        <Key android:codes="2486" android:keyLabel="দ" android:horizontalGap="1%P" />
+        <Key android:codes="2486" android:keyLabel="দ" android:horizontalGap="1dp" />
         <Key android:codes="2498" android:keyLabel="ূ" />
         <Key android:codes="2496" android:keyLabel="ী" />
         <Key android:codes="2500" android:keyLabel="র" />
@@ -29,11 +29,11 @@
         <Key android:codes="2467" android:keyLabel="ও" /> 
         <Key android:codes="2494" android:keyLabel="প" />
         <Key android:codes="2503" android:keyLabel="ে" />
-        <Key android:codes="2507" android:keyLabel="ো" android:horizontalGap="1%P" />
+        <Key android:codes="2507" android:keyLabel="ো" android:horizontalGap="1dp" />
     </Row>
     <Row android:keyWidth="9%p">
         <Key android:codes="-99" android:keyLabel="" android:keyWidth="4%p" android:horizontalGap="0dp" />
-        <Key android:codes="2494" android:keyLabel="া" android:horizontalGap="1%p" />
+        <Key android:codes="2494" android:keyLabel="া" android:horizontalGap="1dp" />
         <Key android:codes="2508" android:keyLabel="স" />
         <Key android:codes="2481" android:keyLabel="ড" />
         <Key android:codes="2484" android:keyLabel="ত" />
