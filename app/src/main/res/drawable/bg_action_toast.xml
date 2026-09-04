@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rounded dark pill background for the custom clipboard action popup
+     (Text Copied / Text Cut / Text Pasted), styled after a rounded toast
+     with a logo + text side by side. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#E6101010" />
+    <corners android:radius="24dp" />
+</shape>
