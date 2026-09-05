@@ -121,12 +121,10 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     // once the desired hints for this layout are decided.
     private val banglaTraditionalHints: Map<Int, String> = emptyMap()
 
-    // Problem Row1: shows a symbol preview (matching what's on the OTHER
-    // symbols page) instead of plain repeated numbers.
-    private val symbolsNumberHints = mapOf(
-        49 to "~", 50 to "`", 51 to "|", 52 to "\u2022", 53 to "\u221A",
-        54 to "\u03C0", 55 to "\u00F7", 56 to "\u00D7", 57 to "{", 48 to "}"
-    )
+    // Point: Symbols1's number row now shows the same Bengali-digit hints as
+    // English's number row (previously showed symbol previews like ~ ` |),
+    // so englishNumberRowHints above is reused directly instead of a
+    // separate symbolsNumberHints map.
 
     // Row3: small top-right hints on specific keys, matching the reference.
     private val symbolsRow3Hints = mapOf(
@@ -559,12 +557,12 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
         val hideHints = SettingsStore.getBoolean(this, SettingsStore.KEY_HIDE_LONG_PRESS_HINTS, false)
         keyboardView.hintMap = when {
-            showingSymbols -> symbolsNumberHints + symbolsRow3Hints + symbolsRow4Hints
+            showingSymbols -> englishNumberRowHints + symbolsRow3Hints + symbolsRow4Hints
             mode == InputMode.BANGLA_TRADITIONAL -> banglaTraditionalHints
             useNumberRow -> englishNumberRowHints
             else -> topRowHints
         }
-        keyboardView.altHintCodes = if (!showingSymbols && mode != InputMode.BANGLA_TRADITIONAL && useNumberRow) {
+        keyboardView.altHintCodes = if (mode != InputMode.BANGLA_TRADITIONAL && (showingSymbols || useNumberRow)) {
             englishNumberRowHints.keys
         } else {
             emptySet()
