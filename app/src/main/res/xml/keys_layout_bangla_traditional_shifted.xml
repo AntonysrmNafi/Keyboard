@@ -18,18 +18,18 @@
         <Key android:codes="2534" android:keyLabel="০" />
     </Row>
     <Row android:keyWidth="7%p">
-        <Key android:codes="2470" android:keyLabel="দ" android:horizontalGap="3%p" />
-        <Key android:codes="2498" android:keyLabel="ূ" />
-        <Key android:codes="2496" android:keyLabel="ী" />
-        <Key android:codes="2480" android:keyLabel="র" />
-        <Key android:codes="2463" android:keyLabel="ট" />
-        <Key android:codes="2447" android:keyLabel="এ" />
-        <Key android:codes="2497" android:keyLabel="ু" />
-        <Key android:codes="2495" android:keyLabel="ি" />
-        <Key android:codes="2451" android:keyLabel="ও" /> 
-        <Key android:codes="2474" android:keyLabel="প" />
-        <Key android:codes="2503" android:keyLabel="ে" />
-        <Key android:codes="2507" android:keyLabel="ো" android:horizontalGap="1%p" />
+        <Key android:codes="2471" android:keyLabel="ধ" android:horizontalGap="3%p" />
+        <Key android:codes="2442" android:keyLabel="ঊ" />
+        <Key android:codes="2440" android:keyLabel="ঈ" />
+        <Key android:codes="2524" android:keyLabel="ড়" />
+        <Key android:codes="2464" android:keyLabel="ঠ" />
+        <Key android:codes="2448" android:keyLabel="ঐ" />
+        <Key android:codes="2441" android:keyLabel="উ" />
+        <Key android:codes="2439" android:keyLabel="ই" />
+        <Key android:codes="2452" android:keyLabel="ঔ" /> 
+        <Key android:codes="2475" android:keyLabel="ফ" />
+        <Key android:codes="2504" android:keyLabel="ৈ" />
+        <Key android:codes="2508" android:keyLabel="ৌ" android:horizontalGap="1%p" />
     </Row>
     <Row >
         <Key android:codes="-99" android:keyLabel="" android:keyWidth="4%p" android:horizontalGap="0%p" />
