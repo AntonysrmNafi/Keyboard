@@ -33,15 +33,15 @@
     </Row>
     <Row >
         <Key android:codes="-99" android:keyLabel="" android:keyWidth="4%p" android:horizontalGap="0%p" />
-        <Key android:codes="2494" android:keyLabel="অ" android:horizontalGap="1%p" />
-        <Key android:codes="2488" android:keyLabel="ষ" />
-        <Key android:codes="2465" android:keyLabel="ঢ" />
-        <Key android:codes="2468" android:keyLabel="থ" />
-        <Key android:codes="2455" android:keyLabel="ঘ" />
-        <Key android:codes="2489" android:keyLabel="ঃ" />
-        <Key android:codes="2460" android:keyLabel="ঝ" />
-        <Key android:codes="2453" android:keyLabel="খ" />
-        <Key android:codes="2482" android:keyLabel="ং" />
+        <Key android:codes="2437" android:keyLabel="অ" android:horizontalGap="1%p" />
+        <Key android:codes="2487" android:keyLabel="ষ" />
+        <Key android:codes="2466" android:keyLabel="ঢ" />
+        <Key android:codes="2469" android:keyLabel="থ" />
+        <Key android:codes="2456" android:keyLabel="ঘ" />
+        <Key android:codes="2435" android:keyLabel="ঃ" />
+        <Key android:codes="2461" android:keyLabel="ঝ" />
+        <Key android:codes="2454" android:keyLabel="খ" />
+        <Key android:codes="2434" android:keyLabel="ং" />
         <Key android:codes="-99" android:keyLabel="" android:keyWidth="4%p" />
     </Row>
     <Row android:keyWidth="7%p">
