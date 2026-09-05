@@ -18,41 +18,41 @@
         <Key android:codes="2534" android:keyLabel="০" />
     </Row>
     <Row android:keyWidth="7%p">
-        <Key android:codes="2486" android:keyLabel="দ" android:horizontalGap="3%p" />
+        <Key android:codes="2470" android:keyLabel="দ" android:horizontalGap="3%p" />
         <Key android:codes="2498" android:keyLabel="ূ" />
         <Key android:codes="2496" android:keyLabel="ী" />
-        <Key android:codes="2500" android:keyLabel="র" />
-        <Key android:codes="2479" android:keyLabel="ট" />
-        <Key android:codes="2463" android:keyLabel="এ" />
+        <Key android:codes="2480" android:keyLabel="র" />
+        <Key android:codes="2463" android:keyLabel="ট" />
+        <Key android:codes="2447" android:keyLabel="এ" />
         <Key android:codes="2497" android:keyLabel="ু" />
         <Key android:codes="2495" android:keyLabel="ি" />
-        <Key android:codes="2467" android:keyLabel="ও" /> 
-        <Key android:codes="2494" android:keyLabel="প" />
+        <Key android:codes="2451" android:keyLabel="ও" /> 
+        <Key android:codes="2474" android:keyLabel="প" />
         <Key android:codes="2503" android:keyLabel="ে" />
         <Key android:codes="2507" android:keyLabel="ো" android:horizontalGap="1%p" />
     </Row>
     <Row >
         <Key android:codes="-99" android:keyLabel="" android:keyWidth="4%p" android:horizontalGap="0%p" />
         <Key android:codes="2494" android:keyLabel="া" android:horizontalGap="1%p" />
-        <Key android:codes="2508" android:keyLabel="স" />
-        <Key android:codes="2481" android:keyLabel="ড" />
-        <Key android:codes="2484" android:keyLabel="ত" />
-        <Key android:codes="2471" android:keyLabel="গ" />
-        <Key android:codes="2509" android:keyLabel="হ" />
-        <Key android:codes="2476" android:keyLabel="জ" />
-        <Key android:codes="2469" android:keyLabel="ক" />
-        <Key android:codes="2502" android:keyLabel="ল" />
+        <Key android:codes="2488" android:keyLabel="স" />
+        <Key android:codes="2465" android:keyLabel="ড" />
+        <Key android:codes="2468" android:keyLabel="ত" />
+        <Key android:codes="2455" android:keyLabel="গ" />
+        <Key android:codes="2489" android:keyLabel="হ" />
+        <Key android:codes="2460" android:keyLabel="জ" />
+        <Key android:codes="2453" android:keyLabel="ক" />
+        <Key android:codes="2482" android:keyLabel="ল" />
         <Key android:codes="-99" android:keyLabel="" android:keyWidth="4%p" />
     </Row>
     <Row android:keyWidth="7%p">
         <Key android:codes="-1" android:keyLabel="&#8679;" android:keyWidth="14%p" android:horizontalGap="0%p" android:isModifier="true" android:isSticky="true" />
         <Key android:codes="2527" android:keyLabel="য়" />
-        <Key android:codes="2506" android:keyLabel="শ" />
-        <Key android:codes="2474" android:keyLabel="চ" />
-        <Key android:codes="2454" android:keyLabel="আ" />
-        <Key android:codes="2496" android:keyLabel="ব" />
-        <Key android:codes="2488" android:keyLabel="ন" />
-        <Key android:codes="2498" android:keyLabel="ম" />
+        <Key android:codes="2486" android:keyLabel="শ" />
+        <Key android:codes="2458" android:keyLabel="চ" />
+        <Key android:codes="2438" android:keyLabel="আ" />
+        <Key android:codes="2476" android:keyLabel="ব" />
+        <Key android:codes="2472" android:keyLabel="ন" />
+        <Key android:codes="2478" android:keyLabel="ম" />
         <Key android:codes="2499" android:keyLabel="ৃ" />
         <Key android:codes="2509" android:keyLabel="্" />
         <Key android:codes="-5" android:keyLabel="&#9003;" android:keyWidth="14%p" />
