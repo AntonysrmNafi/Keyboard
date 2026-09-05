@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.inputmethodservice.Keyboard
 import android.inputmethodservice.KeyboardView
@@ -160,6 +161,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         textAlign = Paint.Align.RIGHT
         color = 0xFF4A7A6F.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 8f
+        typeface = Typeface.DEFAULT_BOLD
     }
     // Point: a second hint color for specific keys (e.g. Bengali digit hints
     // on the English number row) that should stand out from the regular
