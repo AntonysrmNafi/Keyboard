@@ -160,7 +160,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.RIGHT
         color = 0xFF4A7A6F.toInt()
-        textSize = context.resources.displayMetrics.scaledDensity * 8f
+        textSize = context.resources.displayMetrics.scaledDensity * 12f
         typeface = Typeface.DEFAULT_BOLD
     }
     // Point: a second hint color for specific keys (e.g. Bengali digit hints
@@ -320,7 +320,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 canvas.drawText(
                     hint,
                     (key.x + key.width - 6f * density),
-                    (key.y + 16f * density),
+                    (key.y + 10f * density),
                     paint
                 )
             }
