@@ -108,6 +108,19 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         121 to "6", 117 to "7", 105 to "8", 111 to "9", 112 to "0"
     )
 
+    // Point: when the number row is showing (1234567890), long-press hints
+    // now show the Bengali-digit equivalent instead - drawn in a distinct
+    // color (altHintPaint) from the regular hints so they stand out.
+    private val englishNumberRowHints = mapOf(
+        49 to "১", 50 to "২", 51 to "৩", 52 to "৪", 53 to "৫",
+        54 to "৬", 55 to "৭", 56 to "৮", 57 to "৯", 48 to "০"
+    )
+
+    // Point: hints are now enabled for Bangla Traditional mode too. Empty
+    // for now - add code -> hint entries here the same way as topRowHints
+    // once the desired hints for this layout are decided.
+    private val banglaTraditionalHints: Map<Int, String> = emptyMap()
+
     // Problem Row1: shows a symbol preview (matching what's on the OTHER
     // symbols page) instead of plain repeated numbers.
     private val symbolsNumberHints = mapOf(
@@ -545,13 +558,18 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         }
 
         val hideHints = SettingsStore.getBoolean(this, SettingsStore.KEY_HIDE_LONG_PRESS_HINTS, false)
-        keyboardView.hintMap = if (showingSymbols) {
-            symbolsNumberHints + symbolsRow3Hints + symbolsRow4Hints
-        } else {
-            topRowHints
+        keyboardView.hintMap = when {
+            showingSymbols -> symbolsNumberHints + symbolsRow3Hints + symbolsRow4Hints
+            mode == InputMode.BANGLA_TRADITIONAL -> banglaTraditionalHints
+            useNumberRow -> englishNumberRowHints
+            else -> topRowHints
         }
-        keyboardView.hintsEnabled = !hideHints && !showingNumpad &&
-            (showingSymbols || (!useNumberRow && mode != InputMode.BANGLA_TRADITIONAL))
+        keyboardView.altHintCodes = if (!showingSymbols && mode != InputMode.BANGLA_TRADITIONAL && useNumberRow) {
+            englishNumberRowHints.keys
+        } else {
+            emptySet()
+        }
+        keyboardView.hintsEnabled = !hideHints && !showingNumpad
 
         val spaceLabel = when {
             mode == InputMode.ENGLISH -> "\u25C0 English \u25B6"
