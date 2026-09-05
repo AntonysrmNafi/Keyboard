@@ -161,6 +161,13 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         color = 0xFF4A7A6F.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 8f
     }
+    // Point: a second hint color for specific keys (e.g. Bengali digit hints
+    // on the English number row) that should stand out from the regular
+    // hint color used everywhere else.
+    private val altHintPaint = Paint(hintPaint).apply {
+        color = 0xFFC77B3E.toInt()
+    }
+    var altHintCodes: Set<Int> = emptySet()
 
     private val rect = RectF()
 
@@ -307,11 +314,12 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 val code = key.codes.firstOrNull() ?: continue
                 if (code == SPACER_KEY_CODE) continue
                 val hint = hintMap[code] ?: continue
+                val paint = if (altHintCodes.contains(code)) altHintPaint else hintPaint
                 canvas.drawText(
                     hint,
                     (key.x + key.width - 6f * density),
                     (key.y + 16f * density),
-                    hintPaint
+                    paint
                 )
             }
         }
