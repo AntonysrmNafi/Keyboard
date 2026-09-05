@@ -50,6 +50,12 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     private lateinit var englishKeyboardWithNumRow: Keyboard
     private lateinit var englishKeyboardWithNumRowLarge: Keyboard
     private lateinit var traditionalKeyboard: Keyboard
+    // Point: Bangla script has no upper/lowercase, so "Shift" here means a
+    // second character layer (like English's shift-symbols row) instead of
+    // a case transform. This is a placeholder copy of the unshifted layout
+    // for now - edit keys_layout_bangla_traditional_shifted.xml to put the
+    // actual shifted characters on each key later.
+    private lateinit var traditionalKeyboardShifted: Keyboard
     // Point 3: প্রভাত has its own dedicated file (keys_layout_bangla_traditional.xml,
     // currently a byte-for-byte copy of English's numrow layout) - kept as a
     // separate file rather than reusing English's object directly, so its key
@@ -204,6 +210,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         englishKeyboardWithNumRow = Keyboard(this, R.xml.keys_layout_english_numrow)
         englishKeyboardWithNumRowLarge = Keyboard(this, R.xml.keys_layout_english_numrow_large)
         traditionalKeyboard = Keyboard(this, R.xml.keys_layout_bangla_traditional)
+        traditionalKeyboardShifted = Keyboard(this, R.xml.keys_layout_bangla_traditional_shifted)
         symbolsKeyboard1 = Keyboard(this, R.xml.keys_layout_symbols1)
         symbolsKeyboard2 = Keyboard(this, R.xml.keys_layout_symbols2)
         banglaSymbolsKeyboard1 = Keyboard(this, R.xml.keys_layout_bangla_symbols1)
@@ -530,6 +537,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             showingSymbols && symbolsPageTwo -> symbolsKeyboard2
             showingSymbols && mode != InputMode.ENGLISH -> banglaSymbolsKeyboard1
             showingSymbols -> symbolsKeyboard1
+            mode == InputMode.BANGLA_TRADITIONAL && isShifted -> traditionalKeyboardShifted
             mode == InputMode.BANGLA_TRADITIONAL -> traditionalKeyboard
             useNumberRow && useLarge -> englishKeyboardWithNumRowLarge
             useNumberRow -> englishKeyboardWithNumRow
@@ -737,6 +745,9 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         englishKeyboardPlain.isShifted = shifted
         englishKeyboardWithNumRow.isShifted = shifted
         englishKeyboardWithNumRowLarge.isShifted = shifted
+        if (mode == InputMode.BANGLA_TRADITIONAL) {
+            applyKeyboardForMode()
+        }
         if (::keyboardView.isInitialized) keyboardView.invalidateAllKeys()
     }
 
