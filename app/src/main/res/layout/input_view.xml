@@ -278,4 +278,19 @@
 
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/key_preview_bubble"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:background="@drawable/bg_key_preview"
+        android:gravity="center"
+        android:textColor="#FF0A4D4A"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:includeFontPadding="false"
+        android:visibility="gone"
+        android:elevation="10dp" />
+
 </FrameLayout>
+ 
