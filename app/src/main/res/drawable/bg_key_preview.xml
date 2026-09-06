@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Enlarged key-preview bubble background, shown above a key while it's
+     pressed so the user can see exactly which key their finger is on. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFAEDCB0" />
+    <corners android:radius="10dp" />
+</shape>
