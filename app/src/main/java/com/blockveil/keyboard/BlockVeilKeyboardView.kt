@@ -9,10 +9,7 @@ import android.graphics.drawable.Drawable
 import android.inputmethodservice.Keyboard
 import android.inputmethodservice.KeyboardView
 import android.util.AttributeSet
-import android.view.Gravity
 import android.view.MotionEvent
-import android.widget.PopupWindow
-import android.widget.TextView
 import kotlin.math.abs
 
 // Fully custom-drawn keyboard view so letter keys and function keys (shift,
@@ -177,32 +174,18 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private val rect = RectF()
 
     // Point: enlarged key-preview bubble shown above the pressed key (like
-    // Gboard/stock Android keyboards) so the user can see which key their
-    // finger is actually on. Uses a real PopupWindow (not plain canvas
-    // drawing) because it needs to render ABOVE this view's own bounds,
-    // into the app's content area - a View's onDraw is clipped to its own
-    // height and can't paint outside it.
-    private var previewCode: Int? = null
-    private val previewText: TextView by lazy {
-        TextView(context).apply {
-            setBackgroundResource(R.drawable.bg_key_preview)
-            setTextColor(0xFF0A4D4A.toInt())
-            textSize = 28f
-            typeface = boldTypeface
-            gravity = Gravity.CENTER
-            includeFontPadding = false
-        }
-    }
-    private val previewPopup: PopupWindow by lazy {
-        PopupWindow(previewText, 0, 0, false).apply {
-            isClippingEnabled = false
-            isTouchable = false
-        }
-    }
+    // Gboard/stock Android keyboards). A PopupWindow doesn't reliably show
+    // from an InputMethodService's own window on all devices/versions, so
+    // instead this view just reports where the bubble SHOULD be (screen
+    // coordinates + size) and the service positions a plain overlay View
+    // that already lives in input_view.xml (key_preview_bubble) - no
+    // separate window involved, so there's nothing that can silently fail.
+    var onKeyPreview: ((label: String, screenX: Int, screenY: Int, widthPx: Int, heightPx: Int) -> Unit)? = null
+    var onHideKeyPreview: (() -> Unit)? = null
 
-    // Point: codes that shouldn't get an enlarged preview - space (too wide,
-    // looks wrong blown up), spacer, and icon-only keys (shift/backspace/
-    // enter) where enlarging the icon reads as broken rather than helpful.
+    // Codes that shouldn't get an enlarged preview - space (too wide, looks
+    // wrong blown up), spacer, and icon-only keys (shift/backspace/enter)
+    // where enlarging the icon reads as broken rather than helpful.
     private val previewSkipCodes = setOf(32, SPACER_KEY_CODE, -1, -5, -4)
 
     private fun showKeyPreview(key: Keyboard.Key) {
@@ -213,51 +196,34 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         }
         val label = key.label?.toString() ?: return
         val isFunction = functionKeyCodes.contains(code)
-        val isSingleLetter = label.length == 1 && label[0].isLetter() && !isFunction && code != 32
+        val isSingleLetter = label.length == 1 && label[0].isLetter() && !isFunction
         val shownLabel = if (keyboard?.isShifted == true && isSingleLetter) label.uppercase() else label
-        previewCode = code
 
         val scale = verticalScale
-        val bubbleWidth = (key.width * scaleMatrixX()).toInt().coerceAtLeast((40f * density).toInt())
-        val bubbleHeight = (key.height * scale * scaleMatrixY() * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
-        previewText.text = shownLabel
-        previewText.textSize = 24f
+        val sx = scaleMatrixX()
+        val sy = scaleMatrixY()
+        val bubbleWidth = (key.width * sx).toInt().coerceAtLeast((40f * density).toInt())
+        val bubbleHeight = (key.height * scale * sy * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
 
         val loc = IntArray(2)
         getLocationOnScreen(loc)
-        val pts = floatArrayOf(
-            key.x + key.width / 2f,
-            key.y * scale
-        )
+        val pts = floatArrayOf(key.x + key.width / 2f, key.y * scale)
         matrix.mapPoints(pts)
         val screenX = (loc[0] + pts[0] - bubbleWidth / 2f).toInt()
         val screenY = (loc[1] + pts[1] - bubbleHeight).toInt()
 
-        if (previewPopup.isShowing) {
-            previewPopup.update(screenX, screenY, bubbleWidth, bubbleHeight)
-        } else {
-            previewPopup.width = bubbleWidth
-            previewPopup.height = bubbleHeight
-            try {
-                previewPopup.showAtLocation(this, Gravity.NO_GRAVITY, screenX, screenY)
-            } catch (t: Throwable) {
-                // Point: IME windows can reject certain popup show calls
-                // (e.g. right as the input view is being torn down) - never
-                // let a preview failure crash typing itself.
-            }
-        }
+        onKeyPreview?.invoke(shownLabel, screenX, screenY, bubbleWidth, bubbleHeight)
     }
 
     private fun hideKeyPreview() {
-        previewCode = null
-        if (previewPopup.isShowing) previewPopup.dismiss()
+        onHideKeyPreview?.invoke()
     }
 
     // View.scaleX/scaleY (used for the "keyboard width/height %" and
     // one-handed-mode settings) aren't reflected in key.x/key.y directly,
     // but they ARE part of this view's transform matrix, so mapPoints()
-    // above already accounts for them. These two helpers are only used to
-    // size the bubble itself to match the currently rendered key size.
+    // above already accounts for them. These two helpers extract the
+    // current scale factors to size the bubble correctly.
     private fun scaleMatrixX(): Float {
         val pts = floatArrayOf(0f, 0f, 1f, 0f)
         matrix.mapPoints(pts)
@@ -491,7 +457,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                         invalidate()
                     }
                     if (stillOnSameKey && currentKey != null) {
-                        if (previewCode != downKeyCode) showKeyPreview(currentKey)
+                        showKeyPreview(currentKey)
                     } else {
                         hideKeyPreview()
                     }
