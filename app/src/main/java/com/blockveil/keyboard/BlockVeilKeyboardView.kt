@@ -9,7 +9,10 @@ import android.graphics.drawable.Drawable
 import android.inputmethodservice.Keyboard
 import android.inputmethodservice.KeyboardView
 import android.util.AttributeSet
+import android.view.Gravity
 import android.view.MotionEvent
+import android.widget.PopupWindow
+import android.widget.TextView
 import kotlin.math.abs
 
 // Fully custom-drawn keyboard view so letter keys and function keys (shift,
@@ -173,6 +176,100 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
     private val rect = RectF()
 
+    // Point: enlarged key-preview bubble shown above the pressed key (like
+    // Gboard/stock Android keyboards) so the user can see which key their
+    // finger is actually on. Uses a real PopupWindow (not plain canvas
+    // drawing) because it needs to render ABOVE this view's own bounds,
+    // into the app's content area - a View's onDraw is clipped to its own
+    // height and can't paint outside it.
+    private var previewCode: Int? = null
+    private val previewText: TextView by lazy {
+        TextView(context).apply {
+            setBackgroundResource(R.drawable.bg_key_preview)
+            setTextColor(0xFF0A4D4A.toInt())
+            textSize = 28f
+            typeface = boldTypeface
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+        }
+    }
+    private val previewPopup: PopupWindow by lazy {
+        PopupWindow(previewText, 0, 0, false).apply {
+            isClippingEnabled = false
+            isTouchable = false
+        }
+    }
+
+    // Point: codes that shouldn't get an enlarged preview - space (too wide,
+    // looks wrong blown up), spacer, and icon-only keys (shift/backspace/
+    // enter) where enlarging the icon reads as broken rather than helpful.
+    private val previewSkipCodes = setOf(32, SPACER_KEY_CODE, -1, -5, -4)
+
+    private fun showKeyPreview(key: Keyboard.Key) {
+        val code = key.codes.firstOrNull() ?: return
+        if (code in previewSkipCodes) {
+            hideKeyPreview()
+            return
+        }
+        val label = key.label?.toString() ?: return
+        val isFunction = functionKeyCodes.contains(code)
+        val isSingleLetter = label.length == 1 && label[0].isLetter() && !isFunction && code != 32
+        val shownLabel = if (keyboard?.isShifted == true && isSingleLetter) label.uppercase() else label
+        previewCode = code
+
+        val scale = verticalScale
+        val bubbleWidth = (key.width * scaleMatrixX()).toInt().coerceAtLeast((40f * density).toInt())
+        val bubbleHeight = (key.height * scale * scaleMatrixY() * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
+        previewText.text = shownLabel
+        previewText.textSize = 24f
+
+        val loc = IntArray(2)
+        getLocationOnScreen(loc)
+        val pts = floatArrayOf(
+            key.x + key.width / 2f,
+            key.y * scale
+        )
+        matrix.mapPoints(pts)
+        val screenX = (loc[0] + pts[0] - bubbleWidth / 2f).toInt()
+        val screenY = (loc[1] + pts[1] - bubbleHeight).toInt()
+
+        if (previewPopup.isShowing) {
+            previewPopup.update(screenX, screenY, bubbleWidth, bubbleHeight)
+        } else {
+            previewPopup.width = bubbleWidth
+            previewPopup.height = bubbleHeight
+            try {
+                previewPopup.showAtLocation(this, Gravity.NO_GRAVITY, screenX, screenY)
+            } catch (t: Throwable) {
+                // Point: IME windows can reject certain popup show calls
+                // (e.g. right as the input view is being torn down) - never
+                // let a preview failure crash typing itself.
+            }
+        }
+    }
+
+    private fun hideKeyPreview() {
+        previewCode = null
+        if (previewPopup.isShowing) previewPopup.dismiss()
+    }
+
+    // View.scaleX/scaleY (used for the "keyboard width/height %" and
+    // one-handed-mode settings) aren't reflected in key.x/key.y directly,
+    // but they ARE part of this view's transform matrix, so mapPoints()
+    // above already accounts for them. These two helpers are only used to
+    // size the bubble itself to match the currently rendered key size.
+    private fun scaleMatrixX(): Float {
+        val pts = floatArrayOf(0f, 0f, 1f, 0f)
+        matrix.mapPoints(pts)
+        return pts[2] - pts[0]
+    }
+
+    private fun scaleMatrixY(): Float {
+        val pts = floatArrayOf(0f, 0f, 0f, 1f)
+        matrix.mapPoints(pts)
+        return pts[3] - pts[1]
+    }
+
     // Point 2: the stock KeyboardView base class ignores the height it's
     // actually given and just uses the Keyboard XML's own computed row-height
     // sum. Since the container is now a fixed height everywhere (letters,
@@ -327,6 +424,11 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         }
     }
 
+    override fun onDetachedFromWindow() {
+        hideKeyPreview()
+        super.onDetachedFromWindow()
+    }
+
     override fun onTouchEvent(me: MotionEvent): Boolean {
         try {
             handleTouch(me)
@@ -336,6 +438,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             downKeyCode = null
             trackingSpaceKey = false
             isSwiping = false
+            hideKeyPreview()
         }
         return true
     }
@@ -358,6 +461,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 if (!trackingSpaceKey) {
                     scheduleLongPressCheck(me.x, me.y)
                     scheduleRepeatCheck(code)
+                    key?.let { showKeyPreview(it) } ?: hideKeyPreview()
                 }
             }
             MotionEvent.ACTION_MOVE -> {
@@ -386,12 +490,18 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                         pressedKeyCode = newPressed
                         invalidate()
                     }
+                    if (stillOnSameKey && currentKey != null) {
+                        if (previewCode != downKeyCode) showKeyPreview(currentKey)
+                    } else {
+                        hideKeyPreview()
+                    }
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 cancelLongPressCheck()
                 cancelRepeatCheck()
                 pressedKeyCode = null
+                hideKeyPreview()
                 invalidate()
 
                 val wasSwipe = trackingSpaceKey && isSwiping
