@@ -184,11 +184,17 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     var onHideKeyPreview: (() -> Unit)? = null
 
     // Codes that shouldn't get an enlarged preview - space (too wide, looks
-    // wrong blown up), spacer, and icon-only keys (shift/backspace/enter)
-    // where enlarging the icon reads as broken rather than helpful.
-    private val previewSkipCodes = setOf(32, SPACER_KEY_CODE, -1, -5, -4)
+    // wrong blown up), spacer, and icon-only keys (shift/backspace/enter/
+    // emoji) where enlarging the icon reads as broken rather than helpful.
+    private val previewSkipCodes = setOf(32, SPACER_KEY_CODE, -1, -5, -4, -30)
+
+    // Point: the Symbols pages (reached via "?123") don't get key previews
+    // at all - just a plain tap/click, set false by the service while
+    // showingSymbols is true.
+    var previewEnabled: Boolean = true
 
     private fun showKeyPreview(key: Keyboard.Key, overrideLabel: String? = null) {
+        if (!previewEnabled) return
         val code = key.codes.firstOrNull() ?: return
         if (code in previewSkipCodes) {
             hideKeyPreview()
