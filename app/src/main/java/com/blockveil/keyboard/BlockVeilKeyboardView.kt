@@ -188,15 +188,15 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     // where enlarging the icon reads as broken rather than helpful.
     private val previewSkipCodes = setOf(32, SPACER_KEY_CODE, -1, -5, -4)
 
-    private fun showKeyPreview(key: Keyboard.Key) {
+    private fun showKeyPreview(key: Keyboard.Key, overrideLabel: String? = null) {
         val code = key.codes.firstOrNull() ?: return
         if (code in previewSkipCodes) {
             hideKeyPreview()
             return
         }
-        val label = key.label?.toString() ?: return
+        val label = overrideLabel ?: key.label?.toString() ?: return
         val isFunction = functionKeyCodes.contains(code)
-        val isSingleLetter = label.length == 1 && label[0].isLetter() && !isFunction
+        val isSingleLetter = overrideLabel == null && label.length == 1 && label[0].isLetter() && !isFunction
         val shownLabel = if (keyboard?.isShifted == true && isSingleLetter) label.uppercase() else label
 
         val scale = verticalScale
@@ -538,6 +538,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             longPressTriggered = true
             if (hint != null) {
                 onHintLongPress?.invoke(hint)
+                showKeyPreview(key, overrideLabel = hint)
             } else {
                 onActionLongPress?.invoke(code)
             }
