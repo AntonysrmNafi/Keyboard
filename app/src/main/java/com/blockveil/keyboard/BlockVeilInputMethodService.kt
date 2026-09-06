@@ -28,6 +28,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     private var keyboardFrameBaseHeightPx: Int = 0
     private lateinit var actionToast: LinearLayout
     private lateinit var actionToastText: TextView
+    private lateinit var keyPreviewBubble: TextView
     private val actionToastHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var actionToastHideRunnable: Runnable? = null
     private lateinit var suggestionStrip: LinearLayout
@@ -283,6 +284,22 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         keyboardFrameBaseHeightPx = keyboardFrame.layoutParams.height
         actionToast = view.findViewById(R.id.action_toast)
         actionToastText = view.findViewById(R.id.action_toast_text)
+        keyPreviewBubble = view.findViewById(R.id.key_preview_bubble)
+        keyboardView.onKeyPreview = { label, screenX, screenY, widthPx, heightPx ->
+            val rootLoc = IntArray(2)
+            (keyPreviewBubble.parent as View).getLocationOnScreen(rootLoc)
+            val params = keyPreviewBubble.layoutParams
+            params.width = widthPx
+            params.height = heightPx
+            keyPreviewBubble.layoutParams = params
+            keyPreviewBubble.text = label
+            keyPreviewBubble.translationX = (screenX - rootLoc[0]).toFloat()
+            keyPreviewBubble.translationY = (screenY - rootLoc[1]).toFloat()
+            keyPreviewBubble.visibility = View.VISIBLE
+        }
+        keyboardView.onHideKeyPreview = {
+            keyPreviewBubble.visibility = View.GONE
+        }
         textToolButton = view.findViewById(R.id.icon_text_tool)
         toolbarIconsGroup = view.findViewById(R.id.toolbar_icons_group)
         suggestionsGroup = view.findViewById(R.id.suggestions_group)
