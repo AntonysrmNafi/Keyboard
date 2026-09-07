@@ -186,7 +186,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     // Codes that shouldn't get an enlarged preview - space (too wide, looks
     // wrong blown up), spacer, and icon-only keys (shift/backspace/enter/
     // emoji) where enlarging the icon reads as broken rather than helpful.
-    private val previewSkipCodes = setOf(32, SPACER_KEY_CODE, -1, -5, -4, -30)
+    private val previewSkipCodes = setOf(SPACER_KEY_CODE, -1, -5, -4, -30)
 
     // Point: the Symbols pages (reached via "?123") don't get key previews
     // at all - just a plain tap/click, set false by the service while
@@ -200,7 +200,14 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             hideKeyPreview()
             return
         }
-        val label = overrideLabel ?: key.label?.toString() ?: return
+        val rawKeyLabel = overrideLabel ?: key.label?.toString() ?: return
+        val label = if (code == 32 && rawKeyLabel.length > 2 &&
+            rawKeyLabel.first() == '\u25C0' && rawKeyLabel.last() == '\u25B6'
+        ) {
+            rawKeyLabel.substring(1, rawKeyLabel.length - 1).trim()
+        } else {
+            rawKeyLabel
+        }
         val isFunction = functionKeyCodes.contains(code)
         val isSingleLetter = overrideLabel == null && label.length == 1 && label[0].isLetter() && !isFunction
         val shownLabel = if (keyboard?.isShifted == true && isSingleLetter) label.uppercase() else label
@@ -208,7 +215,8 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         val scale = verticalScale
         val sx = scaleMatrixX()
         val sy = scaleMatrixY()
-        val bubbleWidth = (key.width * sx).toInt().coerceAtLeast((40f * density).toInt())
+        val rawBubbleWidth = if (code == 32) key.width * 0.4f else key.width.toFloat()
+        val bubbleWidth = (rawBubbleWidth * sx).toInt().coerceAtLeast((40f * density).toInt())
         val bubbleHeight = (key.height * scale * sy * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
 
         val loc = IntArray(2)
@@ -430,10 +438,10 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
                 code?.let { keyListener?.onPress(it) }
 
+                key?.let { showKeyPreview(it) } ?: hideKeyPreview()
                 if (!trackingSpaceKey) {
                     scheduleLongPressCheck(me.x, me.y)
                     scheduleRepeatCheck(code)
-                    key?.let { showKeyPreview(it) } ?: hideKeyPreview()
                 }
             }
             MotionEvent.ACTION_MOVE -> {
@@ -443,6 +451,12 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                         isSwiping = true
                         onSpaceSwipe?.invoke()
                     }
+                    // Point: onSpaceSwipe() switches the input mode and
+                    // updates the space key's label (language name) on the
+                    // service side - re-reading it here each move keeps the
+                    // preview bubble showing whichever language is
+                    // currently active as the swipe happens.
+                    keyAt(startX, me.y)?.let { if (it.codes.firstOrNull() == 32) showKeyPreview(it) }
                 } else if (longPressRunnable != null) {
                     val moved = abs(me.x - longPressStartX) + abs(me.y - longPressStartY)
                     if (moved > 24f) cancelLongPressCheck()
