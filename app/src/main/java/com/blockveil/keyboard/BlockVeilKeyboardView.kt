@@ -191,10 +191,10 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     // Point: the Symbols pages (reached via "?123") don't get key previews
     // at all - just a plain tap/click, set false by the service while
     // showingSymbols is true.
-    var previewEnabled: Boolean = true
+    var previewBubbleEnabled: Boolean = true
 
     private fun showKeyPreview(key: Keyboard.Key, overrideLabel: String? = null) {
-        if (!previewEnabled) return
+        if (!previewBubbleEnabled) return
         val code = key.codes.firstOrNull() ?: return
         if (code in previewSkipCodes) {
             hideKeyPreview()
