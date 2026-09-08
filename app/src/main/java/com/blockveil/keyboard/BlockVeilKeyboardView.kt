@@ -465,7 +465,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                     // currently active as the swipe happens. pendingSlideDirection
                     // (consumed inside showKeyPreview) makes just this one
                     // refresh animate as a slide instead of an instant swap.
-                    keyAt(startX, me.y)?.let { if (it.codes.firstOrNull() == 32) showKeyPreview(it) }
+                    spaceKey()?.let { showKeyPreview(it) }
                 } else if (longPressRunnable != null) {
                     val moved = abs(me.x - longPressStartX) + abs(me.y - longPressStartY)
                     if (moved > 24f) cancelLongPressCheck()
@@ -591,12 +591,21 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     }
 
     private fun isOnSpaceKey(x: Float, y: Float): Boolean {
-        val spaceKey = keyboard?.keys?.lastOrNull { it.codes.isNotEmpty() && it.codes[0] == 32 } ?: return false
+        val spaceKey = spaceKey() ?: return false
         val scale = verticalScale
         val scaledY = if (scale > 0f) y / scale else y
         return x >= spaceKey.x && x <= spaceKey.x + spaceKey.width &&
             scaledY >= spaceKey.y && scaledY <= spaceKey.y + spaceKey.height
     }
+
+    // Point: fetch the space key directly by code instead of by touch
+    // coordinates. Coordinate lookup (keyAt(startX, me.y)) was fragile
+    // during the swipe-to-change-language gesture - natural vertical
+    // finger drift during a "horizontal" swipe could land on a different
+    // row/key (e.g. Shift, which sits at the same x as the space bar's
+    // left edge), showing the wrong key's preview instead of the space bar's.
+    private fun spaceKey(): Keyboard.Key? =
+        keyboard?.keys?.lastOrNull { it.codes.isNotEmpty() && it.codes[0] == 32 }
 
     companion object {
         const val SPACER_KEY_CODE = -99
