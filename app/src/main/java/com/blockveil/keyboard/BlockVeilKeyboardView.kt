@@ -180,8 +180,12 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     // coordinates + size) and the service positions a plain overlay View
     // that already lives in input_view.xml (key_preview_bubble) - no
     // separate window involved, so there's nothing that can silently fail.
-    var onKeyPreview: ((label: String, screenX: Int, screenY: Int, widthPx: Int, heightPx: Int) -> Unit)? = null
+    var onKeyPreview: ((label: String, screenX: Int, screenY: Int, widthPx: Int, heightPx: Int, slideDirection: Int) -> Unit)? = null
     var onHideKeyPreview: (() -> Unit)? = null
+    // Point: set to +1/-1 for exactly one preview refresh right after a
+    // space-swipe language change (direction the finger swiped), consumed
+    // (reset to 0) by showKeyPreview so only that one update animates.
+    private var pendingSlideDirection: Int = 0
 
     // Codes that shouldn't get an enlarged preview - space (too wide, looks
     // wrong blown up), spacer, and icon-only keys (shift/backspace/enter/
@@ -226,7 +230,9 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         val screenX = (loc[0] + pts[0] - bubbleWidth / 2f).toInt()
         val screenY = (loc[1] + pts[1] - bubbleHeight).toInt()
 
-        onKeyPreview?.invoke(shownLabel, screenX, screenY, bubbleWidth, bubbleHeight)
+        val slideDirection = if (code == 32) pendingSlideDirection else 0
+        pendingSlideDirection = 0
+        onKeyPreview?.invoke(shownLabel, screenX, screenY, bubbleWidth, bubbleHeight, slideDirection)
     }
 
     private fun hideKeyPreview() {
@@ -449,13 +455,16 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                     val dx = me.x - startX
                     if (!isSwiping && abs(dx) > spaceSwipeThreshold) {
                         isSwiping = true
+                        pendingSlideDirection = if (dx > 0) 1 else -1
                         onSpaceSwipe?.invoke()
                     }
                     // Point: onSpaceSwipe() switches the input mode and
                     // updates the space key's label (language name) on the
                     // service side - re-reading it here each move keeps the
                     // preview bubble showing whichever language is
-                    // currently active as the swipe happens.
+                    // currently active as the swipe happens. pendingSlideDirection
+                    // (consumed inside showKeyPreview) makes just this one
+                    // refresh animate as a slide instead of an instant swap.
                     keyAt(startX, me.y)?.let { if (it.codes.firstOrNull() == 32) showKeyPreview(it) }
                 } else if (longPressRunnable != null) {
                     val moved = abs(me.x - longPressStartX) + abs(me.y - longPressStartY)
