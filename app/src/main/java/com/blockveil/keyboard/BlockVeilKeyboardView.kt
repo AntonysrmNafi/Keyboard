@@ -10,6 +10,7 @@ import android.inputmethodservice.Keyboard
 import android.inputmethodservice.KeyboardView
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.View
 import kotlin.math.abs
 
 // Fully custom-drawn keyboard view so letter keys and function keys (shift,
@@ -241,7 +242,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         }
 
         val loc = IntArray(2)
-        getLocationOnScreen(loc)
+        (parent as? View)?.getLocationOnScreen(loc) ?: getLocationOnScreen(loc)
         val pts = floatArrayOf(key.x + key.width / 2f, key.y * scale)
         matrix.mapPoints(pts)
         val screenX = (loc[0] + pts[0] - bubbleWidth / 2f).toInt()
