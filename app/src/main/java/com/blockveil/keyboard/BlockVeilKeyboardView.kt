@@ -219,15 +219,31 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         val scale = verticalScale
         val sx = scaleMatrixX()
         val sy = scaleMatrixY()
-        val rawBubbleWidth = if (code == 32) key.width * 0.4f else key.width.toFloat()
-        val bubbleWidth = (rawBubbleWidth * sx).toInt().coerceAtLeast((40f * density).toInt())
-        val bubbleHeight = (key.height * scale * sy * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
+
+        val bubbleWidth: Int
+        val bubbleHeight: Int
+        val gap: Int
+        if (code == 32) {
+            // Point: sized relative to the whole keyboard's on-screen width
+            // (not the space key's own width) so it's a generous, clearly
+            // readable bubble regardless of how narrow/wide the space key
+            // itself happens to be on a given layout.
+            val kbPts = floatArrayOf(0f, 0f, this.width.toFloat(), 0f)
+            matrix.mapPoints(kbPts)
+            val keyboardScreenWidth = kbPts[2] - kbPts[0]
+            bubbleWidth = (keyboardScreenWidth * 0.42f).toInt().coerceAtLeast((120f * density).toInt())
+            bubbleHeight = (key.height * scale * sy * 1.6f).toInt().coerceAtLeast((56f * density).toInt())
+            gap = (14f * density * sy).toInt()
+        } else {
+            bubbleWidth = (key.width * sx).toInt().coerceAtLeast((40f * density).toInt())
+            bubbleHeight = (key.height * scale * sy * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
+            gap = (6f * density * sy).toInt()
+        }
 
         val loc = IntArray(2)
         getLocationOnScreen(loc)
         val pts = floatArrayOf(key.x + key.width / 2f, key.y * scale)
         matrix.mapPoints(pts)
-        val gap = (6f * density * sy).toInt()
         val screenX = (loc[0] + pts[0] - bubbleWidth / 2f).toInt()
         val screenY = (loc[1] + pts[1] - bubbleHeight - gap).toInt()
 
