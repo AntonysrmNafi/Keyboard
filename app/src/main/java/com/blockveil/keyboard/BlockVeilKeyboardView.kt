@@ -247,7 +247,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         // is far more reliable for the common case.)
         val loc = IntArray(2)
         getLocationOnScreen(loc)
-        val screenX = (loc[0] + key.x + key.width / 2f - bubbleWidth / 2f).toInt()
+        val screenX = (loc[0] + key.x + key.width / 2f - bubbleWidth / 2f + 20f * density).toInt()
         val screenY = (loc[1] + key.y * scale - bubbleHeight - gap).toInt()
 
         val slideDirection = if (code == 32) pendingSlideDirection else 0
