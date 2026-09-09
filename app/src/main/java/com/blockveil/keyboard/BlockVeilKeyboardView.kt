@@ -10,7 +10,6 @@ import android.inputmethodservice.Keyboard
 import android.inputmethodservice.KeyboardView
 import android.util.AttributeSet
 import android.view.MotionEvent
-import android.view.View
 import kotlin.math.abs
 
 // Fully custom-drawn keyboard view so letter keys and function keys (shift,
@@ -218,35 +217,38 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         val shownLabel = if (keyboard?.isShifted == true && isSingleLetter) label.uppercase() else label
 
         val scale = verticalScale
-        val sx = scaleMatrixX()
-        val sy = scaleMatrixY()
 
         val bubbleWidth: Int
         val bubbleHeight: Int
         val gap: Int
         if (code == 32) {
-            // Point: sized relative to the whole keyboard's on-screen width
-            // (not the space key's own width) so it's a generous, clearly
+            // Point: sized relative to the whole keyboard's own width (not
+            // the space key's own width) so it's a generous, clearly
             // readable bubble regardless of how narrow/wide the space key
             // itself happens to be on a given layout.
-            val kbPts = floatArrayOf(0f, 0f, this.width.toFloat(), 0f)
-            matrix.mapPoints(kbPts)
-            val keyboardScreenWidth = kbPts[2] - kbPts[0]
-            bubbleWidth = (keyboardScreenWidth * 0.42f).toInt().coerceAtLeast((120f * density).toInt())
-            bubbleHeight = (key.height * scale * sy * 1.6f).toInt().coerceAtLeast((56f * density).toInt())
-            gap = (14f * density * sy).toInt()
+            bubbleWidth = (this.width * 0.42f).toInt().coerceAtLeast((120f * density).toInt())
+            bubbleHeight = (key.height * scale * 1.6f).toInt().coerceAtLeast((56f * density).toInt())
+            gap = (14f * density).toInt()
         } else {
-            bubbleWidth = (key.width * sx).toInt().coerceAtLeast((40f * density).toInt())
-            bubbleHeight = (key.height * scale * sy * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
-            gap = (6f * density * sy).toInt()
+            bubbleWidth = key.width.coerceAtLeast((40f * density).toInt())
+            bubbleHeight = (key.height * scale * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
+            gap = (6f * density).toInt()
         }
 
+        // Point: kept deliberately simple - this view's own on-screen
+        // top-left, plus the key's coordinates as-is. key.x needs no scale
+        // factor because onDraw only ever scales vertically
+        // (canvas.scale(1f, scale)) - horizontal position is never
+        // transformed internally, so key.x already IS the correct pixel
+        // offset within this view. (A previous version routed this through
+        // View.getMatrix()/mapPoints to also account for the "keyboard
+        // width/height %" and one-handed-mode settings, but that indirection
+        // was producing wrong, near-constant positions - simple direct math
+        // is far more reliable for the common case.)
         val loc = IntArray(2)
-        (parent as? View)?.getLocationOnScreen(loc) ?: getLocationOnScreen(loc)
-        val pts = floatArrayOf(key.x + key.width / 2f, key.y * scale)
-        matrix.mapPoints(pts)
-        val screenX = (loc[0] + pts[0] - bubbleWidth / 2f).toInt()
-        val screenY = (loc[1] + pts[1] - bubbleHeight - gap).toInt()
+        getLocationOnScreen(loc)
+        val screenX = (loc[0] + key.x + key.width / 2f - bubbleWidth / 2f).toInt()
+        val screenY = (loc[1] + key.y * scale - bubbleHeight - gap).toInt()
 
         val slideDirection = if (code == 32) pendingSlideDirection else 0
         pendingSlideDirection = 0
@@ -255,23 +257,6 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
     private fun hideKeyPreview() {
         onHideKeyPreview?.invoke()
-    }
-
-    // View.scaleX/scaleY (used for the "keyboard width/height %" and
-    // one-handed-mode settings) aren't reflected in key.x/key.y directly,
-    // but they ARE part of this view's transform matrix, so mapPoints()
-    // above already accounts for them. These two helpers extract the
-    // current scale factors to size the bubble correctly.
-    private fun scaleMatrixX(): Float {
-        val pts = floatArrayOf(0f, 0f, 1f, 0f)
-        matrix.mapPoints(pts)
-        return pts[2] - pts[0]
-    }
-
-    private fun scaleMatrixY(): Float {
-        val pts = floatArrayOf(0f, 0f, 0f, 1f)
-        matrix.mapPoints(pts)
-        return pts[3] - pts[1]
     }
 
     // Point 2: the stock KeyboardView base class ignores the height it's
