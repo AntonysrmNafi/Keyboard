@@ -180,17 +180,13 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     // coordinates + size) and the service positions a plain overlay View
     // that already lives in input_view.xml (key_preview_bubble) - no
     // separate window involved, so there's nothing that can silently fail.
-    var onKeyPreview: ((label: String, screenX: Int, screenY: Int, widthPx: Int, heightPx: Int, slideDirection: Int) -> Unit)? = null
+    var onKeyPreview: ((label: String, screenX: Int, screenY: Int, widthPx: Int, heightPx: Int) -> Unit)? = null
     var onHideKeyPreview: (() -> Unit)? = null
-    // Point: set to +1/-1 for exactly one preview refresh right after a
-    // space-swipe language change (direction the finger swiped), consumed
-    // (reset to 0) by showKeyPreview so only that one update animates.
-    private var pendingSlideDirection: Int = 0
 
     // Codes that shouldn't get an enlarged preview - space (too wide, looks
     // wrong blown up), spacer, and icon-only keys (shift/backspace/enter/
     // emoji) where enlarging the icon reads as broken rather than helpful.
-    private val previewSkipCodes = setOf(SPACER_KEY_CODE, -1, -5, -4, -30)
+    private val previewSkipCodes = setOf(32, SPACER_KEY_CODE, -1, -5, -4, -30)
 
     // Point: the Symbols pages (reached via "?123") don't get key previews
     // at all - just a plain tap/click, set false by the service while
@@ -204,64 +200,28 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             hideKeyPreview()
             return
         }
-        val rawKeyLabel = overrideLabel ?: key.label?.toString() ?: return
-        val label = if (code == 32 && rawKeyLabel.length > 2 &&
-            rawKeyLabel.first() == '\u25C0' && rawKeyLabel.last() == '\u25B6'
-        ) {
-            rawKeyLabel.substring(1, rawKeyLabel.length - 1).trim()
-        } else {
-            rawKeyLabel
-        }
+        val label = overrideLabel ?: key.label?.toString() ?: return
         val isFunction = functionKeyCodes.contains(code)
         val isSingleLetter = overrideLabel == null && label.length == 1 && label[0].isLetter() && !isFunction
         val shownLabel = if (keyboard?.isShifted == true && isSingleLetter) label.uppercase() else label
 
         val scale = verticalScale
-
-        val bubbleWidth: Int
-        val bubbleHeight: Int
-        val gap: Int
-        if (code == 32) {
-            // Point: sized relative to the whole keyboard's own width (not
-            // the space key's own width) so it's a generous, clearly
-            // readable bubble regardless of how narrow/wide the space key
-            // itself happens to be on a given layout.
-            bubbleWidth = (this.width * 0.42f).toInt().coerceAtLeast((120f * density).toInt())
-            bubbleHeight = (key.height * scale * 1.6f).toInt().coerceAtLeast((56f * density).toInt())
-            gap = (14f * density).toInt()
-        } else {
-            bubbleWidth = key.width.coerceAtLeast((40f * density).toInt())
-            bubbleHeight = (key.height * scale * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
-            gap = (6f * density).toInt()
-        }
+        val bubbleWidth = key.width.coerceAtLeast((40f * density).toInt())
+        val bubbleHeight = (key.height * scale * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
+        val gap = (6f * density).toInt()
 
         // Point: kept deliberately simple - this view's own on-screen
         // top-left, plus the key's coordinates as-is. key.x needs no scale
         // factor because onDraw only ever scales vertically
         // (canvas.scale(1f, scale)) - horizontal position is never
         // transformed internally, so key.x already IS the correct pixel
-        // offset within this view. (A previous version routed this through
-        // View.getMatrix()/mapPoints to also account for the "keyboard
-        // width/height %" and one-handed-mode settings, but that indirection
-        // was producing wrong, near-constant positions - simple direct math
-        // is far more reliable for the common case.)
-        // Point: TEMPORARY DIAGNOSTIC - also force a fixed huge size.
-        val diagnosticWidth = (300f * density).toInt()
-        val diagnosticHeight = (150f * density).toInt()
-
+        // offset within this view.
         val loc = IntArray(2)
         getLocationOnScreen(loc)
-        // Point: TEMPORARY DIAGNOSTIC - fixed position, ignoring key/loc
-        // math entirely. If this exact red box does NOT appear at
-        // screen position (50dp, 300dp) after a real rebuild+reinstall,
-        // the problem is 100% confirmed to be in the build/deploy
-        // pipeline, not in this positioning code. Revert once confirmed.
-        val screenX = (50f * density).toInt()
-        val screenY = (300f * density).toInt()
+        val screenX = (loc[0] + key.x + key.width / 2f - bubbleWidth / 2f).toInt()
+        val screenY = (loc[1] + key.y * scale - bubbleHeight - gap).toInt()
 
-        val slideDirection = if (code == 32) pendingSlideDirection else 0
-        pendingSlideDirection = 0
-        onKeyPreview?.invoke(shownLabel, screenX, screenY, diagnosticWidth, diagnosticHeight, slideDirection)
+        onKeyPreview?.invoke(shownLabel, screenX, screenY, bubbleWidth, bubbleHeight)
     }
 
     private fun hideKeyPreview() {
@@ -467,17 +427,8 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                     val dx = me.x - startX
                     if (!isSwiping && abs(dx) > spaceSwipeThreshold) {
                         isSwiping = true
-                        pendingSlideDirection = if (dx > 0) 1 else -1
                         onSpaceSwipe?.invoke()
                     }
-                    // Point: onSpaceSwipe() switches the input mode and
-                    // updates the space key's label (language name) on the
-                    // service side - re-reading it here each move keeps the
-                    // preview bubble showing whichever language is
-                    // currently active as the swipe happens. pendingSlideDirection
-                    // (consumed inside showKeyPreview) makes just this one
-                    // refresh animate as a slide instead of an instant swap.
-                    spaceKey()?.let { showKeyPreview(it) }
                 } else if (longPressRunnable != null) {
                     val moved = abs(me.x - longPressStartX) + abs(me.y - longPressStartY)
                     if (moved > 24f) cancelLongPressCheck()
