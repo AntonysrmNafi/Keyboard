@@ -285,53 +285,19 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         actionToast = view.findViewById(R.id.action_toast)
         actionToastText = view.findViewById(R.id.action_toast_text)
         keyPreviewBubble = view.findViewById(R.id.key_preview_bubble)
-        keyboardView.onKeyPreview = { label, screenX, screenY, widthPx, heightPx, slideDirection ->
+        keyboardView.onKeyPreview = { label, screenX, screenY, widthPx, heightPx ->
             val rootLoc = IntArray(2)
             (keyPreviewBubble.parent as View).getLocationOnScreen(rootLoc)
             val params = keyPreviewBubble.layoutParams
             params.width = widthPx
             params.height = heightPx
             keyPreviewBubble.layoutParams = params
-            // Point: position uses x/y (absolute layout position), leaving
-            // translationX free for the language-swipe slide animation
-            // below to use without fighting the bubble's on-screen anchor.
             keyPreviewBubble.x = (screenX - rootLoc[0]).toFloat()
             keyPreviewBubble.y = (screenY - rootLoc[1]).toFloat()
+            keyPreviewBubble.text = label
             keyPreviewBubble.visibility = View.VISIBLE
-
-            if (slideDirection != 0 && keyPreviewBubble.text.toString() != label) {
-                // Point: old language name slides out in the swipe
-                // direction while fading, then the new language name is
-                // set and slides in from the opposite side - so switching
-                // languages visibly reads as "one leaves, the other enters".
-                keyPreviewBubble.animate().cancel()
-                keyPreviewBubble.translationX = 0f
-                keyPreviewBubble.alpha = 1f
-                keyPreviewBubble.animate()
-                    .translationX(-slideDirection * widthPx.toFloat())
-                    .alpha(0f)
-                    .setDuration(90)
-                    .withEndAction {
-                        keyPreviewBubble.text = label
-                        keyPreviewBubble.translationX = slideDirection * widthPx.toFloat()
-                        keyPreviewBubble.animate()
-                            .translationX(0f)
-                            .alpha(1f)
-                            .setDuration(110)
-                            .start()
-                    }
-                    .start()
-            } else {
-                keyPreviewBubble.animate().cancel()
-                keyPreviewBubble.translationX = 0f
-                keyPreviewBubble.alpha = 1f
-                keyPreviewBubble.text = label
-            }
         }
         keyboardView.onHideKeyPreview = {
-            keyPreviewBubble.animate().cancel()
-            keyPreviewBubble.translationX = 0f
-            keyPreviewBubble.alpha = 1f
             keyPreviewBubble.visibility = View.GONE
         }
         textToolButton = view.findViewById(R.id.icon_text_tool)
