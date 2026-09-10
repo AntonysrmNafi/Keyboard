@@ -245,14 +245,23 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         // width/height %" and one-handed-mode settings, but that indirection
         // was producing wrong, near-constant positions - simple direct math
         // is far more reliable for the common case.)
+        // Point: TEMPORARY DIAGNOSTIC - also force a fixed huge size.
+        val diagnosticWidth = (300f * density).toInt()
+        val diagnosticHeight = (150f * density).toInt()
+
         val loc = IntArray(2)
         getLocationOnScreen(loc)
-       val screenX = (loc[0] + key.x + key.width / 2f - bubbleWidth / 2f - 50f * density).toInt()
-        val screenY = (loc[1] + key.y * scale - bubbleHeight - gap).toInt()
+        // Point: TEMPORARY DIAGNOSTIC - fixed position, ignoring key/loc
+        // math entirely. If this exact red box does NOT appear at
+        // screen position (50dp, 300dp) after a real rebuild+reinstall,
+        // the problem is 100% confirmed to be in the build/deploy
+        // pipeline, not in this positioning code. Revert once confirmed.
+        val screenX = (50f * density).toInt()
+        val screenY = (300f * density).toInt()
 
         val slideDirection = if (code == 32) pendingSlideDirection else 0
         pendingSlideDirection = 0
-        onKeyPreview?.invoke(shownLabel, screenX, screenY, bubbleWidth, bubbleHeight, slideDirection)
+        onKeyPreview?.invoke(shownLabel, screenX, screenY, diagnosticWidth, diagnosticHeight, slideDirection)
     }
 
     private fun hideKeyPreview() {
