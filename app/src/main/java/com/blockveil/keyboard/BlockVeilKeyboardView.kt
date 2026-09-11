@@ -186,7 +186,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     // Codes that shouldn't get an enlarged preview - space (too wide, looks
     // wrong blown up), spacer, and icon-only keys (shift/backspace/enter/
     // emoji) where enlarging the icon reads as broken rather than helpful.
-    private val previewSkipCodes = setOf(32, SPACER_KEY_CODE, -1, -5, -4, -30)
+    private val previewSkipCodes = setOf(SPACER_KEY_CODE, -1, -5, -4, -30, -20, -21, -22)
 
     // Point: the Symbols pages (reached via "?123") don't get key previews
     // at all - just a plain tap/click, set false by the service while
@@ -429,6 +429,14 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                         isSwiping = true
                         onSpaceSwipe?.invoke()
                     }
+                    // Point: onSpaceSwipe() switches the mode and updates
+                    // the space key's label (language name) on the service
+                    // side - refreshing here keeps the preview showing
+                    // whichever language is currently active as the swipe
+                    // happens. spaceKey() looks it up directly by code
+                    // (not by touch coordinates), which is what fixed the
+                    // earlier "preview shows over the wrong key" bug.
+                    spaceKey()?.let { showKeyPreview(it) }
                 } else if (longPressRunnable != null) {
                     val moved = abs(me.x - longPressStartX) + abs(me.y - longPressStartY)
                     if (moved > 24f) cancelLongPressCheck()
