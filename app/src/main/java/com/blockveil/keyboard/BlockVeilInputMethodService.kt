@@ -584,7 +584,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         } else {
             emptySet()
         }
-        keyboardView.previewBubbleEnabled = !showingSymbols && !showingNumpad
+        keyboardView.previewBubbleEnabled = !showingNumpad
         keyboardView.hintsEnabled = !hideHints && !showingNumpad
 
         val spaceLabel = when {
