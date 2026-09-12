@@ -8,6 +8,7 @@ import android.inputmethodservice.KeyboardView
 import android.media.AudioManager
 import android.text.TextUtils
 import android.view.HapticFeedbackConstants
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -29,6 +30,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     private lateinit var actionToast: LinearLayout
     private lateinit var actionToastText: TextView
     private lateinit var keyPreviewBubble: TextView
+    private lateinit var multiHintPopup: LinearLayout
     private val actionToastHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var actionToastHideRunnable: Runnable? = null
     private lateinit var suggestionStrip: LinearLayout
@@ -121,7 +123,8 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     // merges in alongside whichever top-level hint map is active).
     private val englishRow3Hints = mapOf(
         104 to "!", // h -> !
-        106 to "?"  // j -> ?
+        106 to "?", // j -> ?
+        107 to "("  // k -> ( (corner hint shows the primary option; full picker is { ( [ on long-press)
     )
 
     // Point: when the number row is showing (1234567890), long-press hints
@@ -299,7 +302,36 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         keyboardView.setOnKeyboardActionListener(this)
         keyboardView.onSpaceSwipe = { switchMode() }
         keyboardView.hintMap = topRowHints
+        keyboardView.multiHintMap = mapOf(
+            107 to listOf("{", "(", "[") // k -> { ( [ (picker popup, corner hint still shows "(")
+        )
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
+        keyboardView.onMultiHintShow = { options, selectedIndex, screenX, screenY, optionWidthPx, heightPx ->
+            val rootLoc = IntArray(2)
+            (multiHintPopup.parent as View).getLocationOnScreen(rootLoc)
+            multiHintPopup.removeAllViews()
+            for (opt in options) {
+                val tv = TextView(this).apply {
+                    text = opt
+                    textSize = 22f
+                    gravity = Gravity.CENTER
+                    setTextColor(0xFF0A4D4A.toInt())
+                    layoutParams = LinearLayout.LayoutParams(optionWidthPx, heightPx)
+                }
+                multiHintPopup.addView(tv)
+            }
+            updateMultiHintHighlight(selectedIndex)
+            val params = multiHintPopup.layoutParams
+            params.width = optionWidthPx * options.size
+            params.height = heightPx
+            multiHintPopup.layoutParams = params
+            multiHintPopup.x = (screenX - rootLoc[0]).toFloat()
+            multiHintPopup.y = (screenY - rootLoc[1]).toFloat()
+            multiHintPopup.visibility = View.VISIBLE
+        }
+        keyboardView.onMultiHintUpdate = { index -> updateMultiHintHighlight(index) }
+        keyboardView.onMultiHintHide = { multiHintPopup.visibility = View.GONE }
+        keyboardView.onMultiHintCommit = { text -> currentInputConnection?.commitText(text, 1) }
         keyboardView.actionLongPressCodes = setOf(COPY_KEY_CODE, CUT_KEY_CODE, PASTE_KEY_CODE)
         keyboardView.onActionLongPress = { code -> handleClipboardAction(code) }
         getDrawable(R.drawable.sentiment_satisfied_24)?.mutate()?.let { drawable ->
@@ -351,6 +383,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         actionToast = view.findViewById(R.id.action_toast)
         actionToastText = view.findViewById(R.id.action_toast_text)
         keyPreviewBubble = view.findViewById(R.id.key_preview_bubble)
+        multiHintPopup = view.findViewById(R.id.multi_hint_popup)
         keyboardView.onKeyPreview = { label, screenX, screenY, widthPx, heightPx ->
             val rootLoc = IntArray(2)
             (keyPreviewBubble.parent as View).getLocationOnScreen(rootLoc)
@@ -787,6 +820,17 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         if (capitalizeNext) {
             capitalizeNext = false
             if (isShifted) syncShiftedDisplay(false)
+        }
+    }
+
+    // Point: highlights whichever option in the multi-hint popup (e.g.
+    // { ( [ for 'k') is currently under the finger.
+    private fun updateMultiHintHighlight(selectedIndex: Int) {
+        for (i in 0 until multiHintPopup.childCount) {
+            val child = multiHintPopup.getChildAt(i)
+            child.setBackgroundResource(
+                if (i == selectedIndex) R.drawable.bg_multi_hint_selected else 0
+            )
         }
     }
 
