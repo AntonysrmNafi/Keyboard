@@ -141,13 +141,19 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         54 to "6", 55 to "7", 56 to "8", 57 to "9", 48 to "0"
     )
 
-    // Point: shared by Bangla Traditional's own number row AND Bangla
-    // Symbols1's number row (both use plain ASCII digit codes 49-57/48 for
-    // their Bengali-numeral-labeled keys) - long-press reveals the plain
-    // English digit.
+    // Point: Bangla Symbols1's number row uses plain ASCII digit codes
+    // (49-57/48) despite showing Bengali-numeral labels, while Bangla
+    // Traditional's OWN number row uses the real Bengali digit codepoints
+    // (2535-2534) - two different code systems for visually-the-same keys.
+    // Both map to the plain English digit as the hint, so long-pressing
+    // either keyboard's number row shows the same "1".."0" hint.
     private val banglaDigitHints = mapOf(
+        // Bangla Symbols1 number row (ASCII-coded)
         49 to "1", 50 to "2", 51 to "3", 52 to "4", 53 to "5",
-        54 to "6", 55 to "7", 56 to "8", 57 to "9", 48 to "0"
+        54 to "6", 55 to "7", 56 to "8", 57 to "9", 48 to "0",
+        // Bangla Traditional number row (real Bengali codepoints)
+        2535 to "1", 2536 to "2", 2537 to "3", 2538 to "4", 2539 to "5",
+        2540 to "6", 2541 to "7", 2542 to "8", 2543 to "9", 2534 to "0"
     )
 
     // Point: Bangla Traditional long-press hints - each base letter's
