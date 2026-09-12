@@ -117,10 +117,27 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         54 to "৬", 55 to "৭", 56 to "৮", 57 to "৯", 48 to "০"
     )
 
-    // Point: hints are now enabled for Bangla Traditional mode too. Empty
-    // for now - add code -> hint entries here the same way as topRowHints
-    // once the desired hints for this layout are decided.
-    private val banglaTraditionalHints: Map<Int, String> = emptyMap()
+    // Point: Bangla Phonetic ("প্রভাত") reuses the same number-row Keyboard
+    // as English, but typing a digit there already outputs the Bengali
+    // digit - so its long-press hint shows the plain English digit instead
+    // of repeating the Bengali one.
+    private val plainDigitHints = mapOf(
+        49 to "1", 50 to "2", 51 to "3", 52 to "4", 53 to "5",
+        54 to "6", 55 to "7", 56 to "8", 57 to "9", 48 to "0"
+    )
+
+    // Point: Bangla Traditional long-press hints - each base letter's
+    // long-press reveals a related character.
+    private val banglaTraditionalHints: Map<Int, String> = mapOf(
+        2494 to "\u0985", // া -> অ
+        2488 to "\u09B7", // স -> ষ
+        2465 to "\u09A2", // ড -> ঢ
+        2455 to "\u0998", // গ -> ঘ
+        2489 to "\u0983", // হ -> ঃ
+        2460 to "\u099D", // জ -> ঝ
+        2453 to "\u0996", // ক -> খ
+        2482 to "\u0982"  // ল -> ং
+    )
 
     // Point: Symbols1's number row now shows the same Bengali-digit hints as
     // English's number row (previously showed symbol previews like ~ ` |),
@@ -576,6 +593,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         keyboardView.hintMap = when {
             showingSymbols -> englishNumberRowHints + symbolsRow3Hints + symbolsRow4Hints
             mode == InputMode.BANGLA_TRADITIONAL -> banglaTraditionalHints
+            mode == InputMode.BANGLA_PHONETIC && useNumberRow -> plainDigitHints
             useNumberRow -> englishNumberRowHints
             else -> topRowHints
         }
