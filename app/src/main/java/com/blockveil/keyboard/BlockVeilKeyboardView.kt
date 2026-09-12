@@ -159,7 +159,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.RIGHT
-        color = 0xFF4A7A6F.toInt()
+        color = 0xFFC77B3E.toInt()
         textSize = context.resources.displayMetrics.scaledDensity * 12f
         typeface = Typeface.DEFAULT_BOLD
     }
