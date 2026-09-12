@@ -103,10 +103,25 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     private var lastCommittedCharWasPeriod = false
     private var lastCommittedWasSpace = false
 
-    // Long-press hints on the top letter row (q..p -> 1..0), like a lightweight number row.
+    // Long-press hints on the top letter row.
     private val topRowHints = mapOf(
-        113 to "1", 119 to "2", 101 to "3", 114 to "4", 116 to "5",
-        121 to "6", 117 to "7", 105 to "8", 111 to "9", 112 to "0"
+        113 to "\u09F3", // q -> ৳
+        119 to "%",      // w -> %
+        101 to "3",      // e (unchanged)
+        114 to ";",      // r -> ;
+        116 to "<",      // t -> <
+        121 to ">",      // y -> >
+        117 to "7",      // u (unchanged)
+        105 to "8",      // i (unchanged)
+        111 to "9",      // o (unchanged)
+        112 to "]"       // p -> ]
+    )
+
+    // Point: middle-row hints (not tied to the number-row toggle, so this
+    // merges in alongside whichever top-level hint map is active).
+    private val englishRow3Hints = mapOf(
+        104 to "!", // h -> !
+        106 to "?"  // j -> ?
     )
 
     // Point: when the number row is showing (1234567890), long-press hints
@@ -126,9 +141,19 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         54 to "6", 55 to "7", 56 to "8", 57 to "9", 48 to "0"
     )
 
+    // Point: shared by Bangla Traditional's own number row AND Bangla
+    // Symbols1's number row (both use plain ASCII digit codes 49-57/48 for
+    // their Bengali-numeral-labeled keys) - long-press reveals the plain
+    // English digit.
+    private val banglaDigitHints = mapOf(
+        49 to "1", 50 to "2", 51 to "3", 52 to "4", 53 to "5",
+        54 to "6", 55 to "7", 56 to "8", 57 to "9", 48 to "0"
+    )
+
     // Point: Bangla Traditional long-press hints - each base letter's
-    // long-press reveals a related character.
-    private val banglaTraditionalHints: Map<Int, String> = mapOf(
+    // long-press reveals a related character. Includes the number row
+    // (banglaDigitHints) since this is all one Keyboard object.
+    private val banglaTraditionalHints: Map<Int, String> = banglaDigitHints + mapOf(
         2494 to "\u0985", // া -> অ
         2488 to "\u09B7", // স -> ষ
         2465 to "\u09A2", // ড -> ঢ
@@ -136,7 +161,22 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         2489 to "\u0983", // হ -> ঃ
         2460 to "\u099D", // জ -> ঝ
         2453 to "\u0996", // ক -> খ
-        2482 to "\u0982"  // ল -> ং
+        2482 to "\u0982", // ল -> ং
+        2470 to "\u09A7", // দ -> ধ
+        2498 to "\u098A", // ূ -> ঊ
+        2496 to "\u0988", // ী -> ঈ
+        2463 to "\u09A0", // ট -> ঠ
+        2495 to "\u0987", // ি -> ই
+        2451 to "\u0994", // ও -> ঔ
+        2474 to "\u09AB", // প -> ফ
+        2503 to "\u09C8", // ে -> ৈ
+        2507 to "\u09CC", // ো -> ৌ
+        2486 to "\u09A2\u09BC", // শ -> ঢ় (2-codepoint: ঢ + nukta)
+        2458 to "\u099B", // চ -> ছ
+        2438 to "\u098B", // আ -> ঋ
+        2476 to "\u09AD", // ব -> ভ
+        2472 to "\u09A3", // ন -> ণ
+        2478 to "\u0999"  // ম -> ঙ
     )
 
     // Point: Symbols1's number row now shows the same Bengali-digit hints as
@@ -150,7 +190,10 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     )
 
     // Row4: small hint on the ":" key.
-    private val symbolsRow4Hints = mapOf(58 to "3")
+    private val symbolsRow4Hints = mapOf(58 to "\u0983") // : -> ঃ
+
+    // Point: Symbols2 hints (π -> Π, ✆ -> ✉).
+    private val symbols2Hints = mapOf(960 to "\u03A0", 9990 to "\u2709")
 
     private var clipboardManager: ClipboardManager? = null
     private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
@@ -590,12 +633,19 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         }
 
         val hideHints = SettingsStore.getBoolean(this, SettingsStore.KEY_HIDE_LONG_PRESS_HINTS, false)
-        keyboardView.hintMap = when {
+        val baseHintMap = when {
+            showingSymbols && mode != InputMode.ENGLISH -> banglaDigitHints
+            showingSymbols && symbolsPageTwo -> englishNumberRowHints + symbols2Hints
             showingSymbols -> englishNumberRowHints + symbolsRow3Hints + symbolsRow4Hints
             mode == InputMode.BANGLA_TRADITIONAL -> banglaTraditionalHints
             mode == InputMode.BANGLA_PHONETIC && useNumberRow -> plainDigitHints
             useNumberRow -> englishNumberRowHints
             else -> topRowHints
+        }
+        keyboardView.hintMap = if (!showingSymbols && (mode == InputMode.ENGLISH || mode == InputMode.BANGLA_PHONETIC)) {
+            baseHintMap + englishRow3Hints
+        } else {
+            baseHintMap
         }
         keyboardView.altHintCodes = if (mode != InputMode.BANGLA_TRADITIONAL && (showingSymbols || useNumberRow)) {
             englishNumberRowHints.keys
