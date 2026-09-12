@@ -287,10 +287,8 @@
         android:gravity="center"
         android:textColor="#FF0A4D4A"
         android:textSize="24sp"
-        android:textStyle="bold"
         android:includeFontPadding="false"
         android:visibility="gone"
         android:elevation="10dp" />
 
 </FrameLayout>
- 
