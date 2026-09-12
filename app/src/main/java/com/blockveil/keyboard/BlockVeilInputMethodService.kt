@@ -646,10 +646,10 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             mode == InputMode.BANGLA_TRADITIONAL -> banglaTraditionalHints
             mode == InputMode.BANGLA_PHONETIC && useNumberRow -> plainDigitHints
             useNumberRow -> englishNumberRowHints
-            else -> topRowHints
+            else -> emptyMap()
         }
         keyboardView.hintMap = if (!showingSymbols && (mode == InputMode.ENGLISH || mode == InputMode.BANGLA_PHONETIC)) {
-            baseHintMap + englishRow3Hints
+            baseHintMap + topRowHints + englishRow3Hints
         } else {
             baseHintMap
         }
