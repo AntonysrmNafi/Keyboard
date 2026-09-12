@@ -46,6 +46,21 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     var hintsEnabled: Boolean = true
     var onHintLongPress: ((hint: String) -> Unit)? = null
 
+    // Point: keys with more than one long-press option (e.g. 'k' -> { ( [).
+    // The corner hint still shows only options[0] (via hintMap, set by the
+    // service to match), but long-pressing opens a row of all the options
+    // above the key; sliding the finger across picks one, lifting commits
+    // whichever is currently highlighted.
+    var multiHintMap: Map<Int, List<String>> = emptyMap()
+    var onMultiHintShow: ((options: List<String>, selectedIndex: Int, screenX: Int, screenY: Int, optionWidthPx: Int, heightPx: Int) -> Unit)? = null
+    var onMultiHintUpdate: ((selectedIndex: Int) -> Unit)? = null
+    var onMultiHintHide: (() -> Unit)? = null
+    var onMultiHintCommit: ((text: String) -> Unit)? = null
+    private var activeMultiHintOptions: List<String>? = null
+    private var activeMultiHintIndex: Int = 0
+    private var activeMultiHintKeyX: Float = 0f
+    private var activeMultiHintKeyWidth: Float = 1f
+
     // Keys that trigger an action on long-press instead of (or in addition to) a hint.
     var actionLongPressCodes: Set<Int> = emptySet()
     var onActionLongPress: ((code: Int) -> Unit)? = null
@@ -384,6 +399,8 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         hideKeyPreview()
+        activeMultiHintOptions = null
+        onMultiHintHide?.invoke()
         super.onDetachedFromWindow()
     }
 
@@ -397,6 +414,8 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             trackingSpaceKey = false
             isSwiping = false
             hideKeyPreview()
+            activeMultiHintOptions = null
+            onMultiHintHide?.invoke()
         }
         return true
     }
@@ -423,6 +442,15 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 }
             }
             MotionEvent.ACTION_MOVE -> {
+                val options = activeMultiHintOptions
+                if (options != null) {
+                    val index = indexForTouch(me.x, options.size)
+                    if (index != activeMultiHintIndex) {
+                        activeMultiHintIndex = index
+                        onMultiHintUpdate?.invoke(index)
+                    }
+                    return
+                }
                 if (trackingSpaceKey) {
                     val dx = me.x - startX
                     if (!isSwiping && abs(dx) > spaceSwipeThreshold) {
@@ -464,6 +492,19 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                val options = activeMultiHintOptions
+                if (options != null) {
+                    if (me.actionMasked == MotionEvent.ACTION_UP) {
+                        onMultiHintCommit?.invoke(options[activeMultiHintIndex])
+                    }
+                    onMultiHintHide?.invoke()
+                    activeMultiHintOptions = null
+                    pressedKeyCode = null
+                    downKeyCode = null
+                    longPressTriggered = false
+                    invalidate()
+                    return
+                }
                 cancelLongPressCheck()
                 cancelRepeatCheck()
                 pressedKeyCode = null
@@ -527,24 +568,54 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         val key = keyAt(x, y) ?: return
         val code = key.codes.firstOrNull() ?: return
 
+        val options = if (hintsEnabled) multiHintMap[code] else null
         val hint = if (hintsEnabled) hintMap[code] else null
         val isActionKey = actionLongPressCodes.contains(code)
-        if (hint == null && !isActionKey) return
+        if ((options == null || options.size < 2) && hint == null && !isActionKey) return
 
         longPressStartX = x
         longPressStartY = y
         longPressTriggered = false
         val runnable = Runnable {
             longPressTriggered = true
-            if (hint != null) {
-                onHintLongPress?.invoke(hint)
-                showKeyPreview(key, overrideLabel = hint)
-            } else {
-                onActionLongPress?.invoke(code)
+            when {
+                options != null && options.size > 1 -> showMultiHintPopup(key, options, x)
+                hint != null -> {
+                    onHintLongPress?.invoke(hint)
+                    showKeyPreview(key, overrideLabel = hint)
+                }
+                else -> onActionLongPress?.invoke(code)
             }
         }
         longPressRunnable = runnable
         longPressHandler.postDelayed(runnable, 350)
+    }
+
+    private fun showMultiHintPopup(key: Keyboard.Key, options: List<String>, touchX: Float) {
+        hideKeyPreview()
+        activeMultiHintOptions = options
+        activeMultiHintKeyX = key.x
+        activeMultiHintKeyWidth = key.width.toFloat().coerceAtLeast(1f)
+        activeMultiHintIndex = indexForTouch(touchX, options.size)
+
+        val scale = verticalScale
+        val loc = IntArray(2)
+        getLocationOnScreen(loc)
+        val optionWidthPx = key.width.coerceAtLeast((40f * density).toInt())
+        val heightPx = (key.height * scale * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
+        val gap = (6f * density).toInt()
+        // Point: popup's left edge starts at the key's own left edge and
+        // extends rightward across all options, so option[0] sits directly
+        // above the pressed key (matching where the corner hint was).
+        val screenX = (loc[0] + key.x).toInt()
+        val screenY = (loc[1] + key.y * scale - heightPx - gap).toInt()
+
+        onMultiHintShow?.invoke(options, activeMultiHintIndex, screenX, screenY, optionWidthPx, heightPx)
+    }
+
+    private fun indexForTouch(touchX: Float, optionCount: Int): Int {
+        val relativeX = touchX - activeMultiHintKeyX
+        return (relativeX / activeMultiHintKeyWidth).toInt().coerceIn(0, optionCount - 1)
     }
 
     private fun cancelLongPressCheck() {
