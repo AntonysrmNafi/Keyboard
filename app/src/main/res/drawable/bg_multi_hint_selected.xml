@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Highlight background for whichever option is currently selected in the
+     multi-hint long-press popup (e.g. long-pressing 'k' to pick between
+     { ( [ ). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FF2F7A5C" />
+    <corners android:radius="6dp" />
+</shape>
