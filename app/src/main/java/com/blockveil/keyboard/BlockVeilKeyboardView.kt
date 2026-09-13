@@ -594,7 +594,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     private fun showMultiHintPopup(key: Keyboard.Key, options: List<String>, touchX: Float) {
         hideKeyPreview()
         activeMultiHintOptions = options
-        activeMultiHintKeyX = key.x
+        activeMultiHintKeyX = key.x.toFloat()
         activeMultiHintKeyWidth = key.width.toFloat().coerceAtLeast(1f)
         activeMultiHintIndex = indexForTouch(touchX, options.size)
 
