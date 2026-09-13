@@ -124,7 +124,12 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     private val englishRow3Hints = mapOf(
         104 to "!", // h -> !
         106 to "?", // j -> ?
-        107 to "("  // k -> ( (corner hint shows the primary option; full picker is { ( [ on long-press)
+        107 to "(", // k -> ( (corner hint shows the primary option; full picker is { ( [ on long-press)
+        108 to ")", // l -> ) (full picker: ] } ))
+        103 to "-", // g -> - (full picker: _ - ~)
+        102 to "*", // f -> * (full picker: * ^)
+        100 to "&", // d -> & (full picker: & |)
+        115 to "#"  // s -> # (full picker: ß # $ š ś)
     )
 
     // Point: when the number row is showing (1234567890), long-press hints
@@ -303,7 +308,12 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         keyboardView.onSpaceSwipe = { switchMode() }
         keyboardView.hintMap = topRowHints
         keyboardView.multiHintMap = mapOf(
-            107 to listOf("{", "(", "[") // k -> { ( [ (picker popup, corner hint still shows "(")
+            107 to listOf("{", "(", "["), // k -> { ( [ (picker popup, corner hint still shows "(")
+            108 to listOf("]", "}", ")"), // l -> ] } ) (corner hint shows ")")
+            103 to listOf("_", "-", "~"), // g -> _ - ~ (corner hint shows "-")
+            102 to listOf("*", "^"),      // f -> * ^ (corner hint shows "*")
+            100 to listOf("&", "|"),      // d -> & | (corner hint shows "&")
+            115 to listOf("\u00DF", "#", "$", "\u0161", "\u015B") // s -> ß # $ š ś (corner hint shows "#")
         )
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
         keyboardView.onMultiHintShow = { options, selectedIndex, screenX, screenY, optionWidthPx, heightPx ->
