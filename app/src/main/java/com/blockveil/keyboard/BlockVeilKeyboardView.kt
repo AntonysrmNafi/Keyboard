@@ -607,7 +607,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         // Point: popup's left edge starts at the key's own left edge and
         // extends rightward across all options, so option[0] sits directly
         // above the pressed key (matching where the corner hint was).
-        val screenX = (loc[0] + key.x - 30f * density).toInt()
+        val screenX = (loc[0] + key.x - 35f * density).toInt()
         val screenY = (loc[1] + key.y * scale - heightPx - gap).toInt()
 
         onMultiHintShow?.invoke(options, activeMultiHintIndex, screenX, screenY, optionWidthPx, heightPx)
