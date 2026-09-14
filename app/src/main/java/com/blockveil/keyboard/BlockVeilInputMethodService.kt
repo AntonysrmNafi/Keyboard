@@ -16,6 +16,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.util.Log
 
 // Fully offline IME with English, Bangla phonetic and Bangla traditional modes,
 // a two-page symbols/numbers keyboard, an offline clipboard history panel, and
@@ -23,6 +24,19 @@ import android.widget.TextView
 // SettingsStore. No network permission, no keystroke logging, nothing persisted
 // beyond a small local clipboard history that never leaves the phone.
 class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboardActionListener {
+
+    // TEMP DIAGNOSTIC (remove once the double-keyboard-on-back-press bug is
+    // found): logs every IME lifecycle callback with a timestamp so we can
+    // pull the exact call order from `adb logcat -s BlockVeilIME` while
+    // reproducing "press back with the keyboard cursor active -> 2 keyboards
+    // appear". Tells us whether onCreateInputView() is really firing twice
+    // (a code-side view duplication) or the view is only created once and
+    // the second keyboard is a window/surface-level rendering glitch (a
+    // platform transition issue, needs a different fix).
+    private fun logLifecycle(event: String) {
+        Log.d("BlockVeilIME", "[$event] cachedInputView=${cachedInputView?.hashCode()} " +
+            "cachedParent=${cachedInputView?.parent} thread=${Thread.currentThread().name}")
+    }
 
     private lateinit var keyboardView: BlockVeilKeyboardView
     private lateinit var keyboardFrame: android.widget.FrameLayout
@@ -224,6 +238,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     override fun onCreate() {
         super.onCreate()
+        logLifecycle("onCreate (service process created)")
         DictionaryProvider.load(this)
 
         clipboardManager = getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager
@@ -266,6 +281,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
+        logLifecycle("onConfigurationChanged -> nulling cachedInputView")
         // The Keyboard objects (englishKeyboardPlain etc.) compute their key
         // positions from the screen width at the moment they're constructed.
         // On rotation (or any other configuration change) that width can
@@ -276,7 +292,28 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         cachedInputView = null
     }
 
+    override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInput(info, restarting)
+        logLifecycle("onStartInput restarting=$restarting")
+    }
+
+    override fun onFinishInput() {
+        super.onFinishInput()
+        logLifecycle("onFinishInput (session fully ended)")
+    }
+
+    override fun onWindowShown() {
+        super.onWindowShown()
+        logLifecycle("onWindowShown")
+    }
+
+    override fun onWindowHidden() {
+        super.onWindowHidden()
+        logLifecycle("onWindowHidden")
+    }
+
     override fun onDestroy() {
+        logLifecycle("onDestroy (service process being destroyed)")
         clipboardListener?.let { clipboardManager?.removePrimaryClipChangedListener(it) }
         actionToastHideRunnable?.let { actionToastHandler.removeCallbacks(it) }
         cachedInputView = null
@@ -286,6 +323,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     private var cachedInputView: View? = null
 
     override fun onCreateInputView(): View {
+        logLifecycle("onCreateInputView START")
         // Point 3: Dual keyboard fix - reuse the SAME view instance instead of
         // recreating it every time. CRASH FIX: Android calls
         // onCreateInputView() again on any configuration change (rotation,
@@ -295,9 +333,11 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         // ViewGroup.addView() threw "The specified child already has a
         // parent" - it must be detached from its old parent first.
         cachedInputView?.let { existing ->
+            logLifecycle("onCreateInputView REUSING cached view")
             (existing.parent as? android.view.ViewGroup)?.removeView(existing)
             return existing
         }
+        logLifecycle("onCreateInputView BUILDING FRESH view (cache was null)")
 
         val view = LayoutInflater.from(this).inflate(R.layout.input_view, null)
         cachedInputView = view
@@ -590,6 +630,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        logLifecycle("onStartInputView restarting=$restarting")
         // Point 1: Dual keyboard issue fixed - view is now cached and reused, 
         // no need for cleanup
         resetWordState()
@@ -611,6 +652,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        logLifecycle("onFinishInputView finishingInput=$finishingInput")
         // Point 3: make sure no leftover panel/state carries into the next time
         // the keyboard is shown (e.g. right after returning from an Activity we
         // launched, like Settings or Dictionary Unlock).
