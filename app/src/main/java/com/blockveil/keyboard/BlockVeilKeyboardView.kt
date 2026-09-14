@@ -616,8 +616,13 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         activeMultiHintColumns = columns
 
         val scale = verticalScale
-        val optionWidthPx = key.width.coerceAtLeast((40f * density).toInt())
-        val rowHeightPx = (key.height * scale * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
+        // Point: cell size matches a normal letter key ('q', code 113) so
+        // grid options (e.g. for the narrow '.' key) aren't cramped down
+        // to the pressed key's own width - they're sized like any other
+        // multi-hint key's option cells.
+        val referenceKey = keyboard?.keys?.firstOrNull { it.codes.firstOrNull() == 113 } ?: key
+        val optionWidthPx = referenceKey.width.coerceAtLeast((40f * density).toInt())
+        val rowHeightPx = (referenceKey.height * scale * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
         val gap = (6f * density).toInt()
         val manualOffset = -40f * density
 
