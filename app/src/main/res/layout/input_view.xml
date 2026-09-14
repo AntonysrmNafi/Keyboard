@@ -296,7 +296,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:background="@drawable/bg_key_preview"
         android:visibility="gone"
         android:elevation="10dp" />
