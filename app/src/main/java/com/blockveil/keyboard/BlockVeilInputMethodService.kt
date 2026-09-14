@@ -132,6 +132,16 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         115 to "#"  // s -> # (full picker: ß # $ š ś)
     )
 
+    // Point: row4 (zxcvbnm) corner hints, same pattern as englishRow3Hints.
+    private val englishRow4Hints = mapOf(
+        122 to "\"", // z -> " (full picker: ❝ " ❞, primary is the middle option)
+        109 to "/",  // m -> / (full picker: / \)
+        98 to "'"    // b -> ' (full picker: ' `)
+    )
+
+    // Point: bottom punctuation row - '.' gets a 16-option 2-row grid picker.
+    private val englishPunctuationHints = mapOf(46 to "...")
+
     // Point: when the number row is showing (1234567890), long-press hints
     // now show the Bengali-digit equivalent instead - drawn in a distinct
     // color (altHintPaint) from the regular hints so they stand out.
@@ -313,27 +323,55 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             103 to listOf("_", "-", "~"), // g -> _ - ~ (corner hint shows "-")
             102 to listOf("*", "^"),      // f -> * ^ (corner hint shows "*")
             100 to listOf("&", "|"),      // d -> & | (corner hint shows "&")
-            115 to listOf("\u00DF", "#", "$", "\u0161", "\u015B") // s -> ß # $ š ś (corner hint shows "#")
+            115 to listOf("\u00DF", "#", "$", "\u0161", "\u015B"), // s -> ß # $ š ś (corner hint shows "#")
+            122 to listOf("\u275D", "\"", "\u275E"), // z -> ❝ " ❞ (corner hint shows the middle '"')
+            109 to listOf("/", "\\"),     // m -> / \ (corner hint shows "/")
+            98 to listOf("'", "`"),       // b -> ' ` (corner hint shows "'")
+            46 to listOf(                 // . -> 16-option grid (corner hint shows "...")
+                "&", "%", "+", "\"", "-", ":", "'", "@",  // row 1 (top, farther from key)
+                ";", "/", "(", ")", "#", "!", ",", "?"    // row 2 (bottom, closest to key)
+            )
+        )
+        keyboardView.multiHintPrimaryIndex = mapOf(
+            122 to 1, // z: the corner-hint '"' is options[1], not options[0]
+            46 to 14  // .: the corner-hint-adjacent ',' is options[14] (row2, col6)
+        )
+        keyboardView.multiHintColumns = mapOf(
+            46 to 8 // . -> 8 per row (16 options = 2 rows)
         )
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
-        keyboardView.onMultiHintShow = { options, selectedIndex, screenX, screenY, optionWidthPx, heightPx ->
+        keyboardView.onMultiHintShow = { options, selectedIndex, screenX, screenY, optionWidthPx, rowHeightPx, columns ->
             val rootLoc = IntArray(2)
             (multiHintPopup.parent as View).getLocationOnScreen(rootLoc)
             multiHintPopup.removeAllViews()
-            for (opt in options) {
-                val tv = TextView(this).apply {
-                    text = opt
-                    textSize = 22f
-                    gravity = Gravity.CENTER
-                    setTextColor(0xFF0A4D4A.toInt())
-                    layoutParams = LinearLayout.LayoutParams(optionWidthPx, heightPx)
+            var i = 0
+            while (i < options.size) {
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        rowHeightPx
+                    )
                 }
-                multiHintPopup.addView(tv)
+                val rowEnd = (i + columns).coerceAtMost(options.size)
+                for (j in i until rowEnd) {
+                    val tv = TextView(this).apply {
+                        text = options[j]
+                        textSize = 22f
+                        gravity = Gravity.CENTER
+                        setTextColor(0xFF0A4D4A.toInt())
+                        layoutParams = LinearLayout.LayoutParams(optionWidthPx, rowHeightPx)
+                    }
+                    row.addView(tv)
+                }
+                multiHintPopup.addView(row)
+                i = rowEnd
             }
             updateMultiHintHighlight(selectedIndex)
+            val totalRows = (options.size + columns - 1) / columns
             val params = multiHintPopup.layoutParams
-            params.width = optionWidthPx * options.size
-            params.height = heightPx
+            params.width = optionWidthPx * columns
+            params.height = rowHeightPx * totalRows
             multiHintPopup.layoutParams = params
             multiHintPopup.x = (screenX - rootLoc[0]).toFloat()
             multiHintPopup.y = (screenY - rootLoc[1]).toFloat()
@@ -692,7 +730,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             else -> emptyMap()
         }
         keyboardView.hintMap = if (!showingSymbols && (mode == InputMode.ENGLISH || mode == InputMode.BANGLA_PHONETIC)) {
-            baseHintMap + topRowHints + englishRow3Hints
+            baseHintMap + topRowHints + englishRow3Hints + englishRow4Hints + englishPunctuationHints
         } else {
             baseHintMap
         }
@@ -836,11 +874,16 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     // Point: highlights whichever option in the multi-hint popup (e.g.
     // { ( [ for 'k') is currently under the finger.
     private fun updateMultiHintHighlight(selectedIndex: Int) {
-        for (i in 0 until multiHintPopup.childCount) {
-            val child = multiHintPopup.getChildAt(i)
-            child.setBackgroundResource(
-                if (i == selectedIndex) R.drawable.bg_multi_hint_selected else 0
-            )
+        var flatIndex = 0
+        for (r in 0 until multiHintPopup.childCount) {
+            val row = multiHintPopup.getChildAt(r) as? LinearLayout ?: continue
+            for (c in 0 until row.childCount) {
+                val child = row.getChildAt(c)
+                child.setBackgroundResource(
+                    if (flatIndex == selectedIndex) R.drawable.bg_multi_hint_selected else 0
+                )
+                flatIndex++
+            }
         }
     }
 
