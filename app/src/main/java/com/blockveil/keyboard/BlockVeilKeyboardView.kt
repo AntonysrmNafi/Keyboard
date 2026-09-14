@@ -52,14 +52,27 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     // above the key; sliding the finger across picks one, lifting commits
     // whichever is currently highlighted.
     var multiHintMap: Map<Int, List<String>> = emptyMap()
-    var onMultiHintShow: ((options: List<String>, selectedIndex: Int, screenX: Int, screenY: Int, optionWidthPx: Int, heightPx: Int) -> Unit)? = null
+    // Point: for keys where the corner-hint character is NOT options[0]
+    // (e.g. z's corner hint is the middle option), this says which index
+    // is the "primary" one - the popup positions itself so that option
+    // lands directly above the key, and it's what's pre-selected when the
+    // popup first opens.
+    var multiHintPrimaryIndex: Map<Int, Int> = emptyMap()
+    // Point: how many options per row before wrapping to a new row above
+    // (e.g. '.' has 16 options wrapped 8-per-row = 2 rows). Defaults to
+    // "all in one row" for any key not listed here.
+    var multiHintColumns: Map<Int, Int> = emptyMap()
+    var onMultiHintShow: ((options: List<String>, selectedIndex: Int, screenX: Int, screenY: Int, optionWidthPx: Int, rowHeightPx: Int, columns: Int) -> Unit)? = null
     var onMultiHintUpdate: ((selectedIndex: Int) -> Unit)? = null
     var onMultiHintHide: (() -> Unit)? = null
     var onMultiHintCommit: ((text: String) -> Unit)? = null
     private var activeMultiHintOptions: List<String>? = null
     private var activeMultiHintIndex: Int = 0
-    private var activeMultiHintKeyX: Float = 0f
-    private var activeMultiHintKeyWidth: Float = 1f
+    private var activeMultiHintPopupLeft: Float = 0f
+    private var activeMultiHintPopupTop: Float = 0f
+    private var activeMultiHintOptionWidth: Float = 1f
+    private var activeMultiHintRowHeight: Float = 1f
+    private var activeMultiHintColumns: Int = 1
 
     // Keys that trigger an action on long-press instead of (or in addition to) a hint.
     var actionLongPressCodes: Set<Int> = emptySet()
@@ -444,7 +457,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
             MotionEvent.ACTION_MOVE -> {
                 val options = activeMultiHintOptions
                 if (options != null) {
-                    val index = indexForTouch(me.x, options.size)
+                    val index = indexForTouch(me.x, me.y, options.size)
                     if (index != activeMultiHintIndex) {
                         activeMultiHintIndex = index
                         onMultiHintUpdate?.invoke(index)
@@ -593,29 +606,52 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
 
     private fun showMultiHintPopup(key: Keyboard.Key, options: List<String>, touchX: Float) {
         hideKeyPreview()
+        val code = key.codes.firstOrNull() ?: 0
+        val primaryIdx = (multiHintPrimaryIndex[code] ?: 0).coerceIn(0, options.size - 1)
+        val columns = (multiHintColumns[code] ?: options.size).coerceIn(1, options.size)
+        val totalRows = (options.size + columns - 1) / columns
+        val primaryRow = primaryIdx / columns
+        val primaryCol = primaryIdx % columns
         activeMultiHintOptions = options
-        activeMultiHintKeyX = key.x.toFloat()
-        activeMultiHintKeyWidth = key.width.toFloat().coerceAtLeast(1f)
-        activeMultiHintIndex = indexForTouch(touchX, options.size)
+        activeMultiHintColumns = columns
 
         val scale = verticalScale
+        val optionWidthPx = key.width.coerceAtLeast((40f * density).toInt())
+        val rowHeightPx = (key.height * scale * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
+        val gap = (6f * density).toInt()
+        val manualOffset = -40f * density
+
+        // Point: shift the popup left by however many columns sit before
+        // the primary one, so the primary option's cell lands directly
+        // above the key (matching the corner hint) instead of always
+        // options[0]. The whole grid's BOTTOM edge sits a fixed "gap"
+        // above the key regardless of row count, growing upward for extra
+        // rows - so as long as the primary option is in the LAST row
+        // (closest to the key, which is how the data is ordered), no
+        // extra vertical shifting is needed for the primary row itself.
+        val popupLeft = key.x - primaryCol * optionWidthPx + manualOffset
+        val popupTop = key.y * scale - totalRows * rowHeightPx - gap
+        activeMultiHintPopupLeft = popupLeft
+        activeMultiHintPopupTop = popupTop
+        activeMultiHintOptionWidth = optionWidthPx.toFloat().coerceAtLeast(1f)
+        activeMultiHintRowHeight = rowHeightPx.toFloat().coerceAtLeast(1f)
+        activeMultiHintIndex = primaryIdx
+
         val loc = IntArray(2)
         getLocationOnScreen(loc)
-        val optionWidthPx = key.width.coerceAtLeast((40f * density).toInt())
-        val heightPx = (key.height * scale * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
-        val gap = (6f * density).toInt()
-        // Point: popup's left edge starts at the key's own left edge and
-        // extends rightward across all options, so option[0] sits directly
-        // above the pressed key (matching where the corner hint was).
-        val screenX = (loc[0] + key.x - 40f * density).toInt()
-        val screenY = (loc[1] + key.y * scale - heightPx - gap).toInt()
+        val screenX = (loc[0] + popupLeft).toInt()
+        val screenY = (loc[1] + popupTop).toInt()
 
-        onMultiHintShow?.invoke(options, activeMultiHintIndex, screenX, screenY, optionWidthPx, heightPx)
+        onMultiHintShow?.invoke(options, activeMultiHintIndex, screenX, screenY, optionWidthPx, rowHeightPx, columns)
     }
 
-    private fun indexForTouch(touchX: Float, optionCount: Int): Int {
-        val relativeX = touchX - activeMultiHintKeyX
-        return (relativeX / activeMultiHintKeyWidth).toInt().coerceIn(0, optionCount - 1)
+    private fun indexForTouch(touchX: Float, touchY: Float, optionCount: Int): Int {
+        val col = ((touchX - activeMultiHintPopupLeft) / activeMultiHintOptionWidth).toInt()
+            .coerceIn(0, activeMultiHintColumns - 1)
+        val maxRow = (optionCount - 1) / activeMultiHintColumns
+        val row = ((touchY - activeMultiHintPopupTop) / activeMultiHintRowHeight).toInt()
+            .coerceIn(0, maxRow)
+        return (row * activeMultiHintColumns + col).coerceIn(0, optionCount - 1)
     }
 
     private fun cancelLongPressCheck() {
