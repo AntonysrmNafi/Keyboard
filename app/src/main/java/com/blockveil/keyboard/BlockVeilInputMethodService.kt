@@ -614,6 +614,24 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             refreshClipboardList()
         }
 
+        // Point 8: eliminate the transient "0,0-0,0" layout state entirely,
+        // confirmed via logcat (onStartInputView's very first FrameLayout
+        // bounds are always 0,0-0,0, settling to the real 0,0-720,494 only
+        // ~80-700ms later). This transient is the likely moment Android's
+        // smooth-keyboard-transition system snapshots the wrong geometry,
+        // producing the top-positioned ghost seen in screen recordings -
+        // confirmed to happen with BOTH gesture and button back navigation,
+        // so it isn't specific to the predictive-back animation itself.
+        // Force the view to already know its correct final width/height by
+        // measuring and laying it out against the real screen width BEFORE
+        // Android ever attaches it to the IME window, so there should never
+        // be a 0x0 (or otherwise wrong) frame for anything to snapshot.
+        val screenWidth = resources.displayMetrics.widthPixels
+        val widthSpec = View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.EXACTLY)
+        val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        view.measure(widthSpec, heightSpec)
+        view.layout(0, 0, view.measuredWidth, view.measuredHeight)
+
         return view
     }
 
