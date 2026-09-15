@@ -343,7 +343,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             46 to 1f // . -> option cells 25% bigger than the other multi-hint keys
         )
         keyboardView.multiHintOffsetX = mapOf(
-            46 to +30f // . -> horizontal shift in dp (negative = left, positive = right)
+            46 to +12f // . -> horizontal shift in dp (negative = left, positive = right)
         )
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
         keyboardView.onMultiHintShow = { options, selectedIndex, screenX, screenY, optionWidthPx, rowHeightPx, columns ->
