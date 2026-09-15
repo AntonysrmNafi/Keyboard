@@ -302,14 +302,41 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         logLifecycle("onFinishInput (session fully ended)")
     }
 
+    // Point 4: REAL FIX for the 2-keyboards-after-back-press bug, confirmed
+    // via logcat (cachedInputView's hashcode never changes across the whole
+    // trace - onCreateInputView is NOT firing twice, so the view itself was
+    // never duplicated). The actual culprit: pressing back can finish one
+    // field's input session and start the next field's session so fast that
+    // onWindowShown fires TWICE in a row with no onWindowHidden in between
+    // (observed 1ms apart in logs). When that happens Android can end up
+    // compositing a leftover rendered frame from the old session alongside
+    // the new one for a moment - that leftover frame is the "second keyboard".
+    // Fix: whenever we detect onWindowShown firing without a Hidden first,
+    // force a full invalidate + layout pass so what's on screen is guaranteed
+    // to match the current state instead of a stale buffer.
+    private var isWindowCurrentlyShown = false
+
     override fun onWindowShown() {
         super.onWindowShown()
         logLifecycle("onWindowShown")
+        if (isWindowCurrentlyShown) {
+            logLifecycle("onWindowShown FIRED WITHOUT onWindowHidden IN BETWEEN - forcing redraw")
+        }
+        isWindowCurrentlyShown = true
+        cachedInputView?.let { view ->
+            view.requestLayout()
+            view.invalidate()
+        }
+        if (::keyboardView.isInitialized) {
+            keyboardView.requestLayout()
+            keyboardView.invalidateAllKeys()
+        }
     }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
         logLifecycle("onWindowHidden")
+        isWindowCurrentlyShown = false
     }
 
     override fun onDestroy() {
