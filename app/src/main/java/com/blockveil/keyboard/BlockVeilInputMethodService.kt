@@ -349,6 +349,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             94 to listOf("\u2190", "\u2191", "\u2193", "\u2192"), // symbols2 ^ -> ← ↑ ↓ → (corner hint shows "→")
             61 to listOf("\u221E", "\u2260", "\u2248"), // symbols2 = -> ∞ ≠ ≈ (corner hint shows "≠")
             176 to listOf("\u2033", "\u2032", "\u2022"), // symbols2 ° -> ″ ′ • (corner hint shows "•")
+            110 to listOf("\u0149", "\u0146", "\u0148", "\u0144", ":"), // n -> ŉ ņ ň ń : (corner hint shows ":")
             46 to listOf(                 // . -> 16-option grid (corner hint shows "...")
                 "&", "%", "+", "\"", "-", ":", "'", "@",  // row 1 (top, farther from key)
                 ";", "/", "(", ")", "#", "!", ",", "?"    // row 2 (bottom, closest to key)
@@ -373,7 +374,8 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             2493 to 1,  // symbols2 ঽ: primary hint is '৺' (options[1])
             94 to 1,    // symbols2 ^: primary hint is '↑' (options[1])
             61 to 1,    // symbols2 =: primary hint is '≠' (options[1])
-            176 to 0    // symbols2 °: primary hint is '″' (options[0])
+            176 to 0,   // symbols2 °: primary hint is '″' (options[0])
+            110 to 4    // n: primary hint is ':' (options[4])
         )
         keyboardView.multiHintColumns = mapOf(
             46 to 8,  // . -> 8 per row (16 options = 2 rows)
@@ -386,13 +388,14 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         keyboardView.multiHintCellScale = mapOf(
             46 to 1f // . -> option cells 25% bigger than the other multi-hint keys
         )
+        keyboardView.multiHintRowHeightScale = 1f // global: lower this to shrink every popup's height
         keyboardView.multiHintOffsetX = mapOf(
-            46 to +3f,  // . -> horizontal shift in dp (negative = left, positive = right)
+            46 to +1f,  // . -> horizontal shift in dp (negative = left, positive = right)
             107 to +1f, // k -> horizontal shift in dp
             108 to +1f, // l -> horizontal shift in dp
             103 to +1f, // g -> horizontal shift in dp
             115 to +1f, // s -> horizontal shift in dp
-             98 to +1f,  // b -> horizontal shift in dp
+            98 to +1f,  // b -> horizontal shift in dp
             122 to +1f, // z -> horizontal shift in dp
             100 to +1f, // d -> horizontal shift in dp
             102 to +1f, // f -> horizontal shift in dp
@@ -409,7 +412,8 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             2493 to +1f,  // symbols2 ঽ -> horizontal shift in dp
             94 to +1f,    // symbols2 ^ -> horizontal shift in dp
             61 to +1f,    // symbols2 = -> horizontal shift in dp
-            176 to +1f    // symbols2 ° -> horizontal shift in dp
+            176 to +1f,   // symbols2 ° -> horizontal shift in dp
+            110 to +1f    // n -> horizontal shift in dp
         )
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
         keyboardView.onMultiHintShow = { options, selectedIndex, screenX, screenY, optionWidthPx, rowHeightPx, columns ->
