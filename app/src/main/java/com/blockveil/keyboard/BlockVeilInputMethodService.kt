@@ -302,41 +302,51 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         logLifecycle("onFinishInput (session fully ended)")
     }
 
-    // Point 4: REAL FIX for the 2-keyboards-after-back-press bug, confirmed
-    // via logcat (cachedInputView's hashcode never changes across the whole
-    // trace - onCreateInputView is NOT firing twice, so the view itself was
-    // never duplicated). The actual culprit: pressing back can finish one
-    // field's input session and start the next field's session so fast that
-    // onWindowShown fires TWICE in a row with no onWindowHidden in between
-    // (observed 1ms apart in logs). When that happens Android can end up
-    // compositing a leftover rendered frame from the old session alongside
-    // the new one for a moment - that leftover frame is the "second keyboard".
-    // Fix: whenever we detect onWindowShown firing without a Hidden first,
-    // force a full invalidate + layout pass so what's on screen is guaranteed
-    // to match the current state instead of a stale buffer.
+    // Point 4: attempted fix (forcing requestLayout()/invalidate() on every
+    // onWindowShown) made things WORSE - confirmed by logcat: it went from 2
+    // stacked onWindowShown calls to 3, because the forced layout pass was
+    // itself making Android re-evaluate and re-fire onWindowShown, a small
+    // feedback loop. Reverted that. The user also confirmed visually: after
+    // back, the keyboard flashes on top for an instant then disappears - a
+    // flicker, not a static double-render. That flicker is exactly what a
+    // spurious re-show right after finishingInput=true looks like.
+    //
+    // Point 5: REAL fix - onEvaluateInputViewShown() below now actively
+    // suppresses the input view for a short cooldown window right after a
+    // session ends with finishingInput=true (that flag specifically means
+    // the field's InputConnection is being torn down for good, e.g. back
+    // navigation - NOT a normal temporary hide). If Android tries to show
+    // the keyboard again within that cooldown, we tell it not to, instead of
+    // just reacting after the fact like the old fix did.
     private var isWindowCurrentlyShown = false
+    private var lastFinishingInputTrueAtMs = 0L
+    private val reshowSuppressWindowMs = 200L
 
     override fun onWindowShown() {
         super.onWindowShown()
         logLifecycle("onWindowShown")
         if (isWindowCurrentlyShown) {
-            logLifecycle("onWindowShown FIRED WITHOUT onWindowHidden IN BETWEEN - forcing redraw")
+            logLifecycle("onWindowShown FIRED WITHOUT onWindowHidden IN BETWEEN")
         }
         isWindowCurrentlyShown = true
-        cachedInputView?.let { view ->
-            view.requestLayout()
-            view.invalidate()
-        }
-        if (::keyboardView.isInitialized) {
-            keyboardView.requestLayout()
-            keyboardView.invalidateAllKeys()
-        }
     }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
         logLifecycle("onWindowHidden")
         isWindowCurrentlyShown = false
+    }
+
+    override fun onEvaluateInputViewShown(): Boolean {
+        val defaultAnswer = super.onEvaluateInputViewShown()
+        if (defaultAnswer) {
+            val sinceFinish = android.os.SystemClock.uptimeMillis() - lastFinishingInputTrueAtMs
+            if (lastFinishingInputTrueAtMs != 0L && sinceFinish in 0..reshowSuppressWindowMs) {
+                logLifecycle("onEvaluateInputViewShown SUPPRESSING re-show (${sinceFinish}ms after finishingInput=true)")
+                return false
+            }
+        }
+        return defaultAnswer
     }
 
     override fun onDestroy() {
@@ -680,6 +690,9 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         logLifecycle("onFinishInputView finishingInput=$finishingInput")
+        if (finishingInput) {
+            lastFinishingInputTrueAtMs = android.os.SystemClock.uptimeMillis()
+        }
         // Point 3: make sure no leftover panel/state carries into the next time
         // the keyboard is shown (e.g. right after returning from an Activity we
         // launched, like Settings or Dictionary Unlock).
