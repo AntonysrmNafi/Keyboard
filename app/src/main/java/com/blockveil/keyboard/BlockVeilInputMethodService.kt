@@ -388,7 +388,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         keyboardView.multiHintCellScale = mapOf(
             46 to 1f // . -> option cells 25% bigger than the other multi-hint keys
         )
-        keyboardView.multiHintRowHeightScale = 0.4f // global: lower this to shrink every popup's height
+        keyboardView.multiHintRowHeightScale = 1f // global: lower this to shrink every popup's height
         keyboardView.multiHintOffsetX = mapOf(
             46 to +1f,  // . -> horizontal shift in dp (negative = left, positive = right)
             107 to +1f, // k -> horizontal shift in dp
@@ -663,29 +663,6 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     }
 
     override fun onEvaluateFullscreenMode(): Boolean = false
-
-    // Point: the root input view now has a transparent reserved strip above
-    // the actual keyboard (see input_view.xml + dimens.xml/hint_popup_reserve_height)
-    // so multi-hint popups always have room to render in full instead of
-    // getting clipped at the window's top edge. Without this override, the
-    // system would treat that whole taller window as "real" keyboard space -
-    // squeezing the host app's content up by the reserve height even when no
-    // popup is showing, and swallowing taps meant for the app underneath it.
-    // This tells the system where the actual content starts, so:
-    //  - the app is only resized/panned for the space below the reserve strip
-    //  - taps that land in the (empty, transparent) reserve strip pass
-    //    through to the app instead of being captured by this window
-    // A long-press that drags up INTO the reserve strip to pick a hint still
-    // works normally - once a touch is captured by a view here, Android keeps
-    // delivering its move/up events to that same view for the rest of the
-    // gesture regardless of where the finger goes next.
-    override fun onComputeInsets(outInsets: InputMethodService.Insets) {
-        super.onComputeInsets(outInsets)
-        val reservePx = resources.getDimensionPixelSize(R.dimen.hint_popup_reserve_height)
-        outInsets.contentTopInsets = reservePx
-        outInsets.visibleTopInsets = reservePx
-        outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_CONTENT
-    }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
