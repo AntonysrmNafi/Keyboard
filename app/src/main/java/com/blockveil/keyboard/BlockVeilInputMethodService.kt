@@ -113,9 +113,9 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         114 to ";",      // r -> ;
         116 to "<",      // t -> <
         121 to ">",      // y -> >
-        117 to "7",      // u (unchanged)
-        105 to "8",      // i (unchanged)
-        111 to "9",      // o (unchanged)
+        117 to "+",      // u -> + (full picker: ū ü ù û + ú)
+        105 to "=",      // i -> = (full picker: ĳ ī î į ï ì = í)
+        111 to "[",      // o -> [ (full picker: ꭁ œ ō ø õ ó ò ô ö [)
         112 to "]"       // p -> ]
     )
 
@@ -129,14 +129,16 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         103 to "-", // g -> - (full picker: _ - ~)
         102 to "*", // f -> * (full picker: * ^)
         100 to "&", // d -> & (full picker: & |)
-        115 to "#"  // s -> # (full picker: ß # $ š ś)
+        115 to "#", // s -> # (full picker: ß # $ š ś)
+        97 to "@"   // a -> @ (full picker: æ ǣ ã å ā @ à á â ā)
     )
 
     // Point: row4 (zxcvbnm) corner hints, same pattern as englishRow3Hints.
     private val englishRow4Hints = mapOf(
         122 to "\"", // z -> " (full picker: ❝ " ❞, primary is the middle option)
         109 to "/",  // m -> / (full picker: / \)
-        98 to "'"    // b -> ' (full picker: ' `)
+        98 to "'",   // b -> ' (full picker: ' `)
+        110 to ":"   // n -> : (corner hint only for now - full picker pending, see chat)
     )
 
     // Point: bottom punctuation row - '.' gets a 16-option 2-row grid picker.
@@ -210,14 +212,21 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     // Row3: small top-right hints on specific keys, matching the reference.
     private val symbolsRow3Hints = mapOf(
-        2547 to "$", 42 to "\u2605", 40 to "<", 41 to ">"
+        2547 to "$", 42 to "\u2605", 40 to "<", 41 to ">", 45 to "\u2013"
     )
 
     // Row4: small hint on the ":" key.
     private val symbolsRow4Hints = mapOf(58 to "\u0983") // : -> ঃ
 
     // Point: Symbols2 hints (π -> Π, ✆ -> ✉).
-    private val symbols2Hints = mapOf(960 to "\u03A0", 9990 to "\u2709")
+    private val symbols2Hints = mapOf(
+        960 to "\u03A0", 9990 to "\u2709",
+        10026 to "\u2605", // ✪ -> ★
+        2493 to "\u09FA",  // ঽ -> ৺
+        94 to "\u2192",    // ^ -> →
+        61 to "\u2260",    // = -> ≠
+        176 to "\u2022"    // ° -> •
+    )
 
     private var clipboardManager: ClipboardManager? = null
     private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
@@ -327,6 +336,19 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             122 to listOf("\u275D", "\"", "\u275E"), // z -> ❝ " ❞ (corner hint shows the middle '"')
             109 to listOf("/", "\\"),     // m -> / \ (corner hint shows "/")
             98 to listOf("'", "`"),       // b -> ' ` (corner hint shows "'")
+            117 to listOf("\u016B", "\u00FC", "\u00F9", "\u00FB", "+", "\u00FA"), // u -> ū ü ù û + ú (corner hint shows "+")
+            105 to listOf("\u0133", "\u012B", "\u00EE", "\u012F", "\u00EF", "\u00EC", "=", "\u00ED"), // i -> ĳ ī î į ï ì = í (corner hint shows "=")
+            111 to listOf("\uAB41", "\u0153", "\u014D", "\u00F8", "\u00F5", "\u00F3", "\u00F2", "\u00F4", "\u00F6", "["), // o -> ꭁ œ ō ø õ ó ò ô ö [ (corner hint shows "[")
+            97 to listOf("\u00E6", "\u01E3", "\u00E3", "\u00E5", "\u0101", "@", "\u00E0", "\u00E1", "\u00E2", "\u0101"), // a -> æ ǣ ã å ā @ à á â ā (corner hint shows "@")
+            45 to listOf("\u2014", "_", "\u2013", "\u00B7"), // symbols1 - -> — _ – · (corner hint shows "–")
+            40 to listOf("<", "{", "["),  // symbols1 ( -> < { [ (corner hint shows "<")
+            41 to listOf(">", "}", "]"),  // symbols1 ) -> > } ] (corner hint shows ">")
+            2547 to listOf("\u00A5", "\u20B9", "\u20AC", "\u00A2", "$", "\u00A3"), // symbols1 ৳ -> ¥ ₹ € ¢ $ £ (corner hint shows "$")
+            10026 to listOf("\u272A", "\u2606", "\u2605", "\u2730"), // symbols2 ✪ -> ✪ ☆ ★ ✰ (corner hint shows "★")
+            2493 to listOf("\u0965", "\u09FA", "\u0950"), // symbols2 ঽ -> ॥ ৺ ॐ (corner hint shows "৺")
+            94 to listOf("\u2190", "\u2191", "\u2193", "\u2192"), // symbols2 ^ -> ← ↑ ↓ → (corner hint shows "→")
+            61 to listOf("\u221E", "\u2260", "\u2248"), // symbols2 = -> ∞ ≠ ≈ (corner hint shows "≠")
+            176 to listOf("\u2033", "\u2032", "\u2022"), // symbols2 ° -> ″ ′ • (corner hint shows "•")
             46 to listOf(                 // . -> 16-option grid (corner hint shows "...")
                 "&", "%", "+", "\"", "-", ":", "'", "@",  // row 1 (top, farther from key)
                 ";", "/", "(", ")", "#", "!", ",", "?"    // row 2 (bottom, closest to key)
@@ -338,10 +360,28 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             107 to 1, // k: primary hint is '[' (options[1])
             108 to 2, // l: primary hint is ')' (options[2])
             115 to 1, // s: primary hint is '#' (options[1])
-            103 to 1  // g: primary hint is '-' (options[1])
+            103 to 1, // g: primary hint is '-' (options[1])
+            117 to 4, // u: primary hint is '+' (options[4])
+            105 to 6, // i: primary hint is '=' (options[6])
+            111 to 9, // o: primary hint is '[' (options[9])
+            97 to 5,  // a: primary hint is '@' (options[5])
+            45 to 2,  // symbols1 -: primary hint is '–' (options[2])
+            40 to 2,  // symbols1 (: primary hint is '[' (options[2])
+            41 to 2,  // symbols1 ): primary hint is ']' (options[2])
+            2547 to 4, // symbols1 ৳: primary hint is '$' (options[4])
+            10026 to 1, // symbols2 ✪: primary hint is '☆' (options[1])
+            2493 to 1,  // symbols2 ঽ: primary hint is '৺' (options[1])
+            94 to 1,    // symbols2 ^: primary hint is '↑' (options[1])
+            61 to 1,    // symbols2 =: primary hint is '≠' (options[1])
+            176 to 0    // symbols2 °: primary hint is '″' (options[0])
         )
         keyboardView.multiHintColumns = mapOf(
-            46 to 8 // . -> 8 per row (16 options = 2 rows)
+            46 to 8,  // . -> 8 per row (16 options = 2 rows)
+            117 to 3, // u -> 3 per row (6 options = 2 rows)
+            105 to 4, // i -> 4 per row (8 options = 2 rows)
+            111 to 5, // o -> 5 per row (10 options = 2 rows)
+            97 to 5,  // a -> 5 per row (10 options = 2 rows)
+            2547 to 3 // symbols1 ৳ -> 3 per row (6 options = 2 rows)
         )
         keyboardView.multiHintCellScale = mapOf(
             46 to 1f // . -> option cells 25% bigger than the other multi-hint keys
@@ -355,7 +395,21 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
              98 to +1f,  // b -> horizontal shift in dp
             122 to +1f, // z -> horizontal shift in dp
             100 to +1f, // d -> horizontal shift in dp
-            102 to +1f  // f -> horizontal shift in dp
+            102 to +1f, // f -> horizontal shift in dp
+            117 to -40f, // u -> horizontal shift in dp
+            105 to -40f, // i -> horizontal shift in dp
+            111 to -40f, // o -> horizontal shift in dp
+            97 to -40f,  // a -> horizontal shift in dp
+            109 to -40f, // m -> horizontal shift in dp
+            45 to -40f,  // symbols1 - -> horizontal shift in dp
+            40 to -40f,  // symbols1 ( -> horizontal shift in dp
+            41 to -40f,  // symbols1 ) -> horizontal shift in dp
+            2547 to -40f, // symbols1 ৳ -> horizontal shift in dp
+            10026 to -40f, // symbols2 ✪ -> horizontal shift in dp
+            2493 to -40f,  // symbols2 ঽ -> horizontal shift in dp
+            94 to -40f,    // symbols2 ^ -> horizontal shift in dp
+            61 to -40f,    // symbols2 = -> horizontal shift in dp
+            176 to -40f    // symbols2 ° -> horizontal shift in dp
         )
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
         keyboardView.onMultiHintShow = { options, selectedIndex, screenX, screenY, optionWidthPx, rowHeightPx, columns ->
