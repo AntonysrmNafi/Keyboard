@@ -336,8 +336,8 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             122 to 1, // z: the corner-hint '"' is options[1], not options[0]
             46 to 14, // .: the corner-hint-adjacent ',' is options[14] (row2, col6)
             107 to 1, // k: primary hint is '[' (options[1]).           108 to 2, // l: primary hint is ')' (options[2])
-            115 to 2, // s: primary hint is '#' (options[1])
-            103 to 2  // g: primary hint is '-' (options[1])
+            115 to 1, // s: primary hint is '#' (options[1])
+            103 to 1  // g: primary hint is '-' (options[1])
         )
         keyboardView.multiHintColumns = mapOf(
             46 to 8 // . -> 8 per row (16 options = 2 rows)
