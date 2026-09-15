@@ -16,6 +16,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.util.Log
 
 // Fully offline IME with English, Bangla phonetic and Bangla traditional modes,
 // a two-page symbols/numbers keyboard, an offline clipboard history panel, and
@@ -23,6 +24,19 @@ import android.widget.TextView
 // SettingsStore. No network permission, no keystroke logging, nothing persisted
 // beyond a small local clipboard history that never leaves the phone.
 class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboardActionListener {
+
+    // TEMP DIAGNOSTIC (remove once the double-keyboard-on-back-press bug is
+    // found): logs every IME lifecycle callback with a timestamp so we can
+    // pull the exact call order from `adb logcat -s BlockVeilIME` while
+    // reproducing "press back with the keyboard cursor active -> 2 keyboards
+    // appear". Tells us whether onCreateInputView() is really firing twice
+    // (a code-side view duplication) or the view is only created once and
+    // the second keyboard is a window/surface-level rendering glitch (a
+    // platform transition issue, needs a different fix).
+    private fun logLifecycle(event: String) {
+        Log.d("BlockVeilIME", "[$event] cachedInputView=${cachedInputView?.hashCode()} " +
+            "cachedParent=${cachedInputView?.parent} thread=${Thread.currentThread().name}")
+    }
 
     private lateinit var keyboardView: BlockVeilKeyboardView
     private lateinit var keyboardFrame: android.widget.FrameLayout
@@ -224,6 +238,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     override fun onCreate() {
         super.onCreate()
+        logLifecycle("onCreate (service process created)")
         DictionaryProvider.load(this)
 
         clipboardManager = getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager
@@ -266,6 +281,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
+        logLifecycle("onConfigurationChanged -> nulling cachedInputView")
         // The Keyboard objects (englishKeyboardPlain etc.) compute their key
         // positions from the screen width at the moment they're constructed.
         // On rotation (or any other configuration change) that width can
@@ -276,7 +292,69 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         cachedInputView = null
     }
 
+    override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInput(info, restarting)
+        logLifecycle("onStartInput restarting=$restarting")
+    }
+
+    override fun onFinishInput() {
+        super.onFinishInput()
+        logLifecycle("onFinishInput (session fully ended)")
+    }
+
+    // Point 4: attempted fix (forcing requestLayout()/invalidate() on every
+    // onWindowShown) made things WORSE - confirmed by logcat: it went from 2
+    // stacked onWindowShown calls to 3, because the forced layout pass was
+    // itself making Android re-evaluate and re-fire onWindowShown, a small
+    // feedback loop. Reverted that.
+    //
+    // Point 5: onEvaluateInputViewShown() suppresses a re-show for a short
+    // cooldown right after onFinishInputView (armed on either finishingInput
+    // value now, since the real repro showed false every time).
+    //
+    // Point 6: belt-and-suspenders. If prevention (Point 5) doesn't actually
+    // stop the redundant onWindowShown - possible if the framework is
+    // re-notifying us about an already-showing window without re-consulting
+    // onEvaluateInputViewShown at all - fall back to ACTIVE correction: the
+    // moment we detect a second onWindowShown with no onWindowHidden in
+    // between, immediately call requestHideSelf(0) ourselves. This can't
+    // make the flash literally zero-length, but it turns an ~850ms lingering
+    // reappearance into a same-frame correction instead.
+    private var isWindowCurrentlyShown = false
+    private var lastFinishInputViewAtMs = 0L
+    private val reshowSuppressWindowMs = 200L
+
+    override fun onWindowShown() {
+        super.onWindowShown()
+        logLifecycle("onWindowShown")
+        if (isWindowCurrentlyShown) {
+            logLifecycle("onWindowShown FIRED WITHOUT onWindowHidden IN BETWEEN - forcing hide now")
+            requestHideSelf(0)
+            return
+        }
+        isWindowCurrentlyShown = true
+    }
+
+    override fun onWindowHidden() {
+        super.onWindowHidden()
+        logLifecycle("onWindowHidden")
+        isWindowCurrentlyShown = false
+    }
+
+    override fun onEvaluateInputViewShown(): Boolean {
+        val defaultAnswer = super.onEvaluateInputViewShown()
+        val sinceFinish = android.os.SystemClock.uptimeMillis() - lastFinishInputViewAtMs
+        logLifecycle("onEvaluateInputViewShown defaultAnswer=$defaultAnswer sinceFinish=${sinceFinish}ms")
+        if (defaultAnswer && lastFinishInputViewAtMs != 0L && sinceFinish in 0..reshowSuppressWindowMs) {
+            logLifecycle("onEvaluateInputViewShown SUPPRESSING re-show (${sinceFinish}ms after last onFinishInputView)")
+            return false
+        }
+        return defaultAnswer
+    }
+
+
     override fun onDestroy() {
+        logLifecycle("onDestroy (service process being destroyed)")
         clipboardListener?.let { clipboardManager?.removePrimaryClipChangedListener(it) }
         actionToastHideRunnable?.let { actionToastHandler.removeCallbacks(it) }
         cachedInputView = null
@@ -286,6 +364,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     private var cachedInputView: View? = null
 
     override fun onCreateInputView(): View {
+        logLifecycle("onCreateInputView START")
         // Point 3: Dual keyboard fix - reuse the SAME view instance instead of
         // recreating it every time. CRASH FIX: Android calls
         // onCreateInputView() again on any configuration change (rotation,
@@ -295,9 +374,11 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         // ViewGroup.addView() threw "The specified child already has a
         // parent" - it must be detached from its old parent first.
         cachedInputView?.let { existing ->
+            logLifecycle("onCreateInputView REUSING cached view")
             (existing.parent as? android.view.ViewGroup)?.removeView(existing)
             return existing
         }
+        logLifecycle("onCreateInputView BUILDING FRESH view (cache was null)")
 
         val view = LayoutInflater.from(this).inflate(R.layout.input_view, null)
         cachedInputView = view
@@ -334,23 +415,10 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         )
         keyboardView.multiHintPrimaryIndex = mapOf(
             122 to 1, // z: the corner-hint '"' is options[1], not options[0]
-            46 to 14, // .: the corner-hint-adjacent ',' is options[14] (row2, col6)
-            107 to 1, // k: primary hint is '1' (options[2])
-            108 to 2, // l: primary hint is ')' (options[2])
-            115 to 1, // s: primary hint is '#' (options[1])
-            103 to 1  // g: primary hint is '-' (options[1])
+            46 to 14  // .: the corner-hint-adjacent ',' is options[14] (row2, col6)
         )
         keyboardView.multiHintColumns = mapOf(
             46 to 8 // . -> 8 per row (16 options = 2 rows)
-        )
-        keyboardView.multiHintCellScale = mapOf(
-            46 to 1f // . -> option cells 25% bigger than the other multi-hint keys
-        )
-        keyboardView.multiHintOffsetX = mapOf(
-            46 to +3f,  // . -> horizontal shift in dp (negative = left, positive = right)
-            107 to +1f, // k -> horizontal shift in dp
-            108 to +1f, // l -> horizontal shift in dp
-            103 to +1f  // g -> horizontal shift in dp
         )
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
         keyboardView.onMultiHintShow = { options, selectedIndex, screenX, screenY, optionWidthPx, rowHeightPx, columns ->
@@ -603,6 +671,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        logLifecycle("onStartInputView restarting=$restarting")
         // Point 1: Dual keyboard issue fixed - view is now cached and reused, 
         // no need for cleanup
         resetWordState()
@@ -624,6 +693,10 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        logLifecycle("onFinishInputView finishingInput=$finishingInput")
+        // Point 5: arm the re-show cooldown on ANY onFinishInputView, not just
+        // finishingInput=true - the real back-press repro showed false here.
+        lastFinishInputViewAtMs = android.os.SystemClock.uptimeMillis()
         // Point 3: make sure no leftover panel/state carries into the next time
         // the keyboard is shown (e.g. right after returning from an Activity we
         // launched, like Settings or Dictionary Unlock).
@@ -685,8 +758,6 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
                 80
             )
         } else 100
-        keyboardView.pivotY = 0f
-        keyboardView.scaleY = heightPercent / 100f
 
         val oneHandedMode = SettingsStore.getInt(this, SettingsStore.KEY_ONE_HANDED_MODE, 0)
         val widthPercent = if (oneHandedMode != 0) {
@@ -696,6 +767,34 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
                 if (landscape) 40 else 85
             )
         } else 100
+
+        // Point 7: possible root cause of the "flash on back-press" bug,
+        // confirmed to be BlockVeil-specific (other keyboards don't do this
+        // on the same apps/devices). Explicitly setting scaleX/scaleY/pivotX/
+        // pivotY on a View - even to identity values like 1f/0f - forces
+        // Android to render it through a transform/RenderNode matrix path
+        // instead of the plain untransformed path most keyboards use for
+        // their default full-size state. That extra transform layer is a
+        // plausible trigger for the system's smooth keyboard show/hide
+        // animation (WindowInsetsAnimation, API 30+) to get confused during
+        // a fast transition like back-navigation, producing the flash.
+        // Fix: when resize and one-handed mode are both off (the default,
+        // most-common case for most users), don't touch the transform
+        // properties at all - leave the view at Android's untouched default
+        // instead of explicitly re-asserting identity values every time.
+        if (heightPercent == 100 && widthPercent == 100) {
+            if (keyboardView.scaleX != 1f || keyboardView.scaleY != 1f) {
+                keyboardView.scaleX = 1f
+                keyboardView.scaleY = 1f
+                keyboardView.pivotX = 0f
+                keyboardView.pivotY = 0f
+            }
+            return
+        }
+
+        keyboardView.pivotY = 0f
+        keyboardView.scaleY = heightPercent / 100f
+
         // Point 2: pivotX depending on keyboardView.width only makes sense once
         // the view has actually been measured - guard against 0 (not yet laid
         // out) so a stale/zero pivot never causes a lopsided scale on the very
