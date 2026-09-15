@@ -335,7 +335,8 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         keyboardView.multiHintPrimaryIndex = mapOf(
             122 to 1, // z: the corner-hint '"' is options[1], not options[0]
             46 to 14, // .: the corner-hint-adjacent ',' is options[14] (row2, col6)
-            107 to 1, // k: primary hint is '[' (options[1]).           108 to 2, // l: primary hint is ')' (options[2])
+            107 to 1, // k: primary hint is '[' (options[1])
+            108 to 2, // l: primary hint is ')' (options[2])
             115 to 1, // s: primary hint is '#' (options[1])
             103 to 1  // g: primary hint is '-' (options[1])
         )
@@ -349,7 +350,12 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             46 to +3f,  // . -> horizontal shift in dp (negative = left, positive = right)
             107 to +1f, // k -> horizontal shift in dp
             108 to +1f, // l -> horizontal shift in dp
-            103 to +1f  // g -> horizontal shift in dp
+            103 to +1f, // g -> horizontal shift in dp
+            115 to +1f, // s -> horizontal shift in dp
+             98 to +1f,  // b -> horizontal shift in dp
+            122 to +1f, // z -> horizontal shift in dp
+            100 to +1f, // d -> horizontal shift in dp
+            102 to +1f  // f -> horizontal shift in dp
         )
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
         keyboardView.onMultiHintShow = { options, selectedIndex, screenX, screenY, optionWidthPx, rowHeightPx, columns ->
