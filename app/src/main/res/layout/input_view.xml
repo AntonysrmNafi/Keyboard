@@ -3,6 +3,25 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
+    <!-- Point: outer wrapper adds a transparent reserved strip above the
+         actual visible keyboard content (unchanged below), so the window
+         is tall enough for multi-hint popups to render in full without
+         ever growing the keyboard's own visible size. See dimens.xml
+         (hint_popup_reserve_height) and
+         BlockVeilInputMethodService.onComputeInsets - that call is what
+         keeps this reserved strip from pushing the host app's content up
+         or intercepting its touches when no popup is showing. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <View
+            android:id="@+id/hint_popup_reserve_space"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/hint_popup_reserve_height"
+            android:background="@android:color/transparent" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -243,6 +262,8 @@
         </LinearLayout>
 
     </FrameLayout>
+
+    </LinearLayout>
 
     </LinearLayout>
 
