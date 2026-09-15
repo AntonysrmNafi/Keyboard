@@ -396,20 +396,20 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             122 to +1f, // z -> horizontal shift in dp
             100 to +1f, // d -> horizontal shift in dp
             102 to +1f, // f -> horizontal shift in dp
-            117 to -40f, // u -> horizontal shift in dp
-            105 to -40f, // i -> horizontal shift in dp
-            111 to -40f, // o -> horizontal shift in dp
-            97 to -40f,  // a -> horizontal shift in dp
-            109 to -40f, // m -> horizontal shift in dp
-            45 to -40f,  // symbols1 - -> horizontal shift in dp
-            40 to -40f,  // symbols1 ( -> horizontal shift in dp
-            41 to -40f,  // symbols1 ) -> horizontal shift in dp
-            2547 to -40f, // symbols1 ৳ -> horizontal shift in dp
-            10026 to -40f, // symbols2 ✪ -> horizontal shift in dp
-            2493 to -40f,  // symbols2 ঽ -> horizontal shift in dp
-            94 to -40f,    // symbols2 ^ -> horizontal shift in dp
-            61 to -40f,    // symbols2 = -> horizontal shift in dp
-            176 to -40f    // symbols2 ° -> horizontal shift in dp
+            117 to +1f, // u -> horizontal shift in dp
+            105 to +1f, // i -> horizontal shift in dp
+            111 to +1f, // o -> horizontal shift in dp
+            97 to +1f,  // a -> horizontal shift in dp
+            109 to +1f, // m -> horizontal shift in dp
+            45 to +1f,  // symbols1 - -> horizontal shift in dp
+            40 to +1f,  // symbols1 ( -> horizontal shift in dp
+            41 to +1f,  // symbols1 ) -> horizontal shift in dp
+            2547 to +1f, // symbols1 ৳ -> horizontal shift in dp
+            10026 to +1f, // symbols2 ✪ -> horizontal shift in dp
+            2493 to +1f,  // symbols2 ঽ -> horizontal shift in dp
+            94 to +1f,    // symbols2 ^ -> horizontal shift in dp
+            61 to +1f,    // symbols2 = -> horizontal shift in dp
+            176 to +1f    // symbols2 ° -> horizontal shift in dp
         )
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
         keyboardView.onMultiHintShow = { options, selectedIndex, screenX, screenY, optionWidthPx, rowHeightPx, columns ->
