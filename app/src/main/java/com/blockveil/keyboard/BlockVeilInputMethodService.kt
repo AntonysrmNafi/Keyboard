@@ -306,27 +306,31 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     // onWindowShown) made things WORSE - confirmed by logcat: it went from 2
     // stacked onWindowShown calls to 3, because the forced layout pass was
     // itself making Android re-evaluate and re-fire onWindowShown, a small
-    // feedback loop. Reverted that. The user also confirmed visually: after
-    // back, the keyboard flashes on top for an instant then disappears - a
-    // flicker, not a static double-render. That flicker is exactly what a
-    // spurious re-show right after finishingInput=true looks like.
+    // feedback loop. Reverted that.
     //
-    // Point 5: REAL fix - onEvaluateInputViewShown() below now actively
-    // suppresses the input view for a short cooldown window right after a
-    // session ends with finishingInput=true (that flag specifically means
-    // the field's InputConnection is being torn down for good, e.g. back
-    // navigation - NOT a normal temporary hide). If Android tries to show
-    // the keyboard again within that cooldown, we tell it not to, instead of
-    // just reacting after the fact like the old fix did.
+    // Point 5: onEvaluateInputViewShown() suppresses a re-show for a short
+    // cooldown right after onFinishInputView (armed on either finishingInput
+    // value now, since the real repro showed false every time).
+    //
+    // Point 6: belt-and-suspenders. If prevention (Point 5) doesn't actually
+    // stop the redundant onWindowShown - possible if the framework is
+    // re-notifying us about an already-showing window without re-consulting
+    // onEvaluateInputViewShown at all - fall back to ACTIVE correction: the
+    // moment we detect a second onWindowShown with no onWindowHidden in
+    // between, immediately call requestHideSelf(0) ourselves. This can't
+    // make the flash literally zero-length, but it turns an ~850ms lingering
+    // reappearance into a same-frame correction instead.
     private var isWindowCurrentlyShown = false
-    private var lastFinishingInputTrueAtMs = 0L
+    private var lastFinishInputViewAtMs = 0L
     private val reshowSuppressWindowMs = 200L
 
     override fun onWindowShown() {
         super.onWindowShown()
         logLifecycle("onWindowShown")
         if (isWindowCurrentlyShown) {
-            logLifecycle("onWindowShown FIRED WITHOUT onWindowHidden IN BETWEEN")
+            logLifecycle("onWindowShown FIRED WITHOUT onWindowHidden IN BETWEEN - forcing hide now")
+            requestHideSelf(0)
+            return
         }
         isWindowCurrentlyShown = true
     }
@@ -339,15 +343,15 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     override fun onEvaluateInputViewShown(): Boolean {
         val defaultAnswer = super.onEvaluateInputViewShown()
-        if (defaultAnswer) {
-            val sinceFinish = android.os.SystemClock.uptimeMillis() - lastFinishingInputTrueAtMs
-            if (lastFinishingInputTrueAtMs != 0L && sinceFinish in 0..reshowSuppressWindowMs) {
-                logLifecycle("onEvaluateInputViewShown SUPPRESSING re-show (${sinceFinish}ms after finishingInput=true)")
-                return false
-            }
+        val sinceFinish = android.os.SystemClock.uptimeMillis() - lastFinishInputViewAtMs
+        logLifecycle("onEvaluateInputViewShown defaultAnswer=$defaultAnswer sinceFinish=${sinceFinish}ms")
+        if (defaultAnswer && lastFinishInputViewAtMs != 0L && sinceFinish in 0..reshowSuppressWindowMs) {
+            logLifecycle("onEvaluateInputViewShown SUPPRESSING re-show (${sinceFinish}ms after last onFinishInputView)")
+            return false
         }
         return defaultAnswer
     }
+
 
     override fun onDestroy() {
         logLifecycle("onDestroy (service process being destroyed)")
@@ -690,9 +694,9 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         logLifecycle("onFinishInputView finishingInput=$finishingInput")
-        if (finishingInput) {
-            lastFinishingInputTrueAtMs = android.os.SystemClock.uptimeMillis()
-        }
+        // Point 5: arm the re-show cooldown on ANY onFinishInputView, not just
+        // finishingInput=true - the real back-press repro showed false here.
+        lastFinishInputViewAtMs = android.os.SystemClock.uptimeMillis()
         // Point 3: make sure no leftover panel/state carries into the next time
         // the keyboard is shown (e.g. right after returning from an Activity we
         // launched, like Settings or Dictionary Unlock).
