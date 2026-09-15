@@ -66,6 +66,10 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     // (width and height both scaled together). Defaults to 1f (same size as
     // a normal letter key) for any key not listed here.
     var multiHintCellScale: Map<Int, Float> = emptyMap()
+    // Point: per-key horizontal shift (in dp) for the multi-hint popup.
+    // Negative = shift left, positive = shift right. Defaults to -40dp
+    // (the old shared value) for any key not listed here.
+    var multiHintOffsetX: Map<Int, Float> = emptyMap()
     var onMultiHintShow: ((options: List<String>, selectedIndex: Int, screenX: Int, screenY: Int, optionWidthPx: Int, rowHeightPx: Int, columns: Int) -> Unit)? = null
     var onMultiHintUpdate: ((selectedIndex: Int) -> Unit)? = null
     var onMultiHintHide: (() -> Unit)? = null
@@ -629,7 +633,7 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         val optionWidthPx = (referenceKey.width * cellScale).toInt().coerceAtLeast((40f * density).toInt())
         val rowHeightPx = (referenceKey.height * scale * 1.15f * cellScale).toInt().coerceAtLeast((48f * density).toInt())
         val gap = (6f * density).toInt()
-        val manualOffset = -40f * density
+        val manualOffset = (multiHintOffsetX[code] ?: -40f) * density
 
         // Point: shift the popup left by however many columns sit before
         // the primary one, so the primary option's cell lands directly
