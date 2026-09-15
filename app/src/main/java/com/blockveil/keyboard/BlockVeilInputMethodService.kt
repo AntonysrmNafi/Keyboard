@@ -348,8 +348,8 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         )
         keyboardView.multiHintOffsetX = mapOf(
             46 to +3f,  // . -> horizontal shift in dp (negative = left, positive = right)
-            107 to -15f, // k -> horizontal shift in dp
-            108 to -10f, // l -> horizontal shift in dp
+            107 to +8f, // k -> horizontal shift in dp
+            108 to -5f, // l -> horizontal shift in dp
             103 to -3f  // g -> horizontal shift in dp
         )
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
