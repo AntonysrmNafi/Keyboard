@@ -342,6 +342,9 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         keyboardView.multiHintCellScale = mapOf(
             46 to 1f // . -> option cells 25% bigger than the other multi-hint keys
         )
+        keyboardView.multiHintOffsetX = mapOf(
+            46 to +50f // . -> horizontal shift in dp (negative = left, positive = right)
+        )
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
         keyboardView.onMultiHintShow = { options, selectedIndex, screenX, screenY, optionWidthPx, rowHeightPx, columns ->
             val rootLoc = IntArray(2)
