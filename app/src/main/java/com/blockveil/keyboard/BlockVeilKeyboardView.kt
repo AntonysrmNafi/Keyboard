@@ -62,6 +62,10 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
     // (e.g. '.' has 16 options wrapped 8-per-row = 2 rows). Defaults to
     // "all in one row" for any key not listed here.
     var multiHintColumns: Map<Int, Int> = emptyMap()
+    // Point: per-key size multiplier for the multi-hint popup's option cells
+    // (width and height both scaled together). Defaults to 1f (same size as
+    // a normal letter key) for any key not listed here.
+    var multiHintCellScale: Map<Int, Float> = emptyMap()
     var onMultiHintShow: ((options: List<String>, selectedIndex: Int, screenX: Int, screenY: Int, optionWidthPx: Int, rowHeightPx: Int, columns: Int) -> Unit)? = null
     var onMultiHintUpdate: ((selectedIndex: Int) -> Unit)? = null
     var onMultiHintHide: (() -> Unit)? = null
@@ -621,8 +625,9 @@ class BlockVeilKeyboardView @JvmOverloads constructor(
         // to the pressed key's own width - they're sized like any other
         // multi-hint key's option cells.
         val referenceKey = keyboard?.keys?.firstOrNull { it.codes.firstOrNull() == 113 } ?: key
-        val optionWidthPx = referenceKey.width.coerceAtLeast((40f * density).toInt())
-        val rowHeightPx = (referenceKey.height * scale * 1.15f).toInt().coerceAtLeast((48f * density).toInt())
+        val cellScale = multiHintCellScale[code] ?: 1f
+        val optionWidthPx = (referenceKey.width * cellScale).toInt().coerceAtLeast((40f * density).toInt())
+        val rowHeightPx = (referenceKey.height * scale * 1.15f * cellScale).toInt().coerceAtLeast((48f * density).toInt())
         val gap = (6f * density).toInt()
         val manualOffset = -40f * density
 
