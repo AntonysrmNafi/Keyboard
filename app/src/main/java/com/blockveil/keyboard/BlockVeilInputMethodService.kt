@@ -56,10 +56,10 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     // Point: Bangla script has no upper/lowercase, so "Shift" here means a
     // second character layer (like English's shift-symbols row) instead of
     // a case transform. This is a placeholder copy of the unshifted layout
-    // for now - edit keys_layout_bangla_traditional_shifted.xml to put the
+    // for now - edit ridmik_bangla_traditional_shifted.xml to put the
     // actual shifted characters on each key later.
     private lateinit var traditionalKeyboardShifted: Keyboard
-    // Point 3: প্রভাত has its own dedicated file (keys_layout_bangla_traditional.xml,
+    // Point 3: প্রভাত has its own dedicated file (ridmik_bangla_traditional.xml,
     // currently a byte-for-byte copy of English's numrow layout) - kept as a
     // separate file rather than reusing English's object directly, so its key
     // labels can later be swapped to actual Bengali characters without
@@ -202,7 +202,14 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         2438 to "\u098B", // আ -> ঋ
         2476 to "\u09AD", // ব -> ভ
         2472 to "\u09A3", // ন -> ণ
-        2478 to "\u0999"  // ম -> ঙ
+        2478 to "\u0999", // ম -> ঙ
+        2447 to "\u0990", // এ -> ঐ
+        2497 to "\u0989", // ু -> উ
+        2468 to "\u09A5", // ত -> থ
+        2527 to "\u09CD\u09AF", // য় -> ্য
+        2509 to "\u0981", // ্ -> ঁ
+        2524 to "\u09B0\u09CD", // ড় -> র্
+        2480 to "\u09DC"  // র -> ড়
     )
 
     // Point: Symbols1's number row now shows the same Bengali-digit hints as
@@ -311,16 +318,16 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         val view = LayoutInflater.from(this).inflate(R.layout.input_view, null)
         cachedInputView = view
 
-        englishKeyboardPlain = Keyboard(this, R.xml.keys_layout_english)
-        englishKeyboardWithNumRow = Keyboard(this, R.xml.keys_layout_english_numrow)
-        englishKeyboardWithNumRowLarge = Keyboard(this, R.xml.keys_layout_english_numrow_large)
-        traditionalKeyboard = Keyboard(this, R.xml.keys_layout_bangla_traditional)
-        traditionalKeyboardShifted = Keyboard(this, R.xml.keys_layout_bangla_traditional_shifted)
-        symbolsKeyboard1 = Keyboard(this, R.xml.keys_layout_symbols1)
-        symbolsKeyboard2 = Keyboard(this, R.xml.keys_layout_symbols2)
-        banglaSymbolsKeyboard1 = Keyboard(this, R.xml.keys_layout_bangla_symbols1)
-        banglaSymbolsKeyboard2 = Keyboard(this, R.xml.keys_layout_bangla_symbols2)
-        numpadKeyboard = Keyboard(this, R.xml.keys_layout_numpad)
+        englishKeyboardPlain = Keyboard(this, R.xml.ridmik_english)
+        englishKeyboardWithNumRow = Keyboard(this, R.xml.ridmik_english_numrow)
+        englishKeyboardWithNumRowLarge = Keyboard(this, R.xml.ridmik_english_numrow_large)
+        traditionalKeyboard = Keyboard(this, R.xml.ridmik_bangla_traditional)
+        traditionalKeyboardShifted = Keyboard(this, R.xml.ridmik_bangla_traditional_shifted)
+        symbolsKeyboard1 = Keyboard(this, R.xml.ridmik_english_symbols1)
+        symbolsKeyboard2 = Keyboard(this, R.xml.ridmik_english_symbols2)
+        banglaSymbolsKeyboard1 = Keyboard(this, R.xml.ridmik_bangla_symbols1)
+        banglaSymbolsKeyboard2 = Keyboard(this, R.xml.ridmik_bangla_symbols2)
+        numpadKeyboard = Keyboard(this, R.xml.ridmik_numpad)
 
         keyboardView = view.findViewById(R.id.keyboard_view)
         keyboardView.setOnKeyboardActionListener(this)
@@ -350,6 +357,13 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             61 to listOf("\u221E", "\u2260", "\u2248"), // symbols2 = -> ∞ ≠ ≈ (corner hint shows "≠")
             176 to listOf("\u2033", "\u2032", "\u2022"), // symbols2 ° -> ″ ′ • (corner hint shows "•")
             110 to listOf("\u0149", "\u0146", "\u0148", "\u0144", ":"), // n -> ŉ ņ ň ń : (corner hint shows ":")
+            2447 to listOf("\u0990", "\u099E"), // bangla এ -> ঐ ঞ (corner hint shows "ঐ")
+            2497 to listOf("\u0989", "\u09CE"), // bangla ু -> উ ৎ (corner hint shows "উ")
+            2468 to listOf("\u09A5", "\u09CE"), // bangla ত -> থ ৎ (corner hint shows "থ")
+            2527 to listOf("\u09CD\u09AF", "\u09AF", "\u09B0\u200D\u09CD\u09AF"), // bangla য় -> ্য য র‍্য (corner hint shows "্য")
+            2509 to listOf("\u09BC", "\u0981"), // bangla ্ -> ় ঁ (corner hint shows "ঁ")
+            2524 to listOf("\u09B0\u09CD", "\u09CD\u09B0"), // bangla ড় -> র্ ্র (corner hint shows "র্")
+            2480 to listOf("\u09B0\u200D\u09CD\u09AF", "\u09F0", "\u09F1", "\u09B0\u09CD", "\u09DC", "\u09CD\u09B0"), // bangla র -> র‍্য ৰ ৱ র্ ড় ্র (corner hint shows "ড়")
             46 to listOf(                 // . -> 16-option grid (corner hint shows "...")
                 "&", "%", "+", "\"", "-", ":", "'", "@",  // row 1 (top, farther from key)
                 ";", "/", "(", ")", "#", "!", ",", "?"    // row 2 (bottom, closest to key)
@@ -375,7 +389,14 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             94 to 1,    // symbols2 ^: primary hint is '↑' (options[1])
             61 to 1,    // symbols2 =: primary hint is '≠' (options[1])
             176 to 0,   // symbols2 °: primary hint is '″' (options[0])
-            110 to 4    // n: primary hint is ':' (options[4])
+            110 to 4,   // n: primary hint is ':' (options[4])
+            2447 to 0, // bangla এ: primary hint is 'ঐ' (options[0])
+            2497 to 0, // bangla ু: primary hint is 'উ' (options[0])
+            2468 to 0, // bangla ত: primary hint is 'থ' (options[0])
+            2527 to 0, // bangla য়: primary hint is '্য' (options[0])
+            2509 to 1, // bangla ্: primary hint is 'ঁ' (options[1])
+            2524 to 0, // bangla ড়: primary hint is 'র্' (options[0])
+            2480 to 4  // bangla র: primary hint is 'ড়' (options[4])
         )
         keyboardView.multiHintColumns = mapOf(
             46 to 8,  // . -> 8 per row (16 options = 2 rows)
@@ -383,12 +404,13 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             105 to 4, // i -> 4 per row (8 options = 2 rows)
             111 to 5, // o -> 5 per row (10 options = 2 rows)
             97 to 5,  // a -> 5 per row (10 options = 2 rows)
-            2547 to 3 // symbols1 ৳ -> 3 per row (6 options = 2 rows)
+            2547 to 3, // symbols1 ৳ -> 3 per row (6 options = 2 rows)
+            2480 to 3  // bangla র -> 3 per row (6 options = 2 rows)
         )
         keyboardView.multiHintCellScale = mapOf(
             46 to 1f // . -> option cells 25% bigger than the other multi-hint keys
         )
-        keyboardView.multiHintRowHeightScale = 0.4f // global: lower this to shrink every popup's height
+        keyboardView.multiHintRowHeightScale = 1f // global: lower this to shrink every popup's height
         keyboardView.multiHintOffsetX = mapOf(
             46 to +1f,  // . -> horizontal shift in dp (negative = left, positive = right)
             107 to +1f, // k -> horizontal shift in dp
@@ -413,7 +435,14 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             94 to +1f,    // symbols2 ^ -> horizontal shift in dp
             61 to +1f,    // symbols2 = -> horizontal shift in dp
             176 to +1f,   // symbols2 ° -> horizontal shift in dp
-            110 to +1f    // n -> horizontal shift in dp
+            110 to +1f,   // n -> horizontal shift in dp
+            2447 to +1f, // bangla এ -> horizontal shift in dp
+            2497 to +1f, // bangla ু -> horizontal shift in dp
+            2468 to +1f, // bangla ত -> horizontal shift in dp
+            2527 to +1f, // bangla য় -> horizontal shift in dp
+            2509 to +1f, // bangla ্ -> horizontal shift in dp
+            2524 to +1f, // bangla ড় -> horizontal shift in dp
+            2480 to +1f  // bangla র -> horizontal shift in dp
         )
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
         keyboardView.onMultiHintShow = { options, selectedIndex, screenX, screenY, optionWidthPx, rowHeightPx, columns ->
