@@ -55,6 +55,12 @@ class MainActivity : Activity() {
         if (intent.getBooleanExtra(EXTRA_OPEN_SETTINGS, false)) {
             startActivity(Intent(this, SettingsMenuActivity::class.java))
         }
+        // Point: same safe pattern as EXTRA_OPEN_SETTINGS above, but jumps
+        // straight to Clipboard settings - used by the "Manage" button in
+        // the keyboard's own clipboard panel.
+        if (intent.getBooleanExtra(EXTRA_OPEN_CLIPBOARD, false)) {
+            startActivity(Intent(this, ClipboardSettingsActivity::class.java))
+        }
     }
 
     override fun onResume() {
@@ -76,5 +82,6 @@ class MainActivity : Activity() {
 
     companion object {
         const val EXTRA_OPEN_SETTINGS = "open_settings"
+        const val EXTRA_OPEN_CLIPBOARD = "open_clipboard"
     }
 }
