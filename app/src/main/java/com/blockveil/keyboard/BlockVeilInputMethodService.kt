@@ -832,7 +832,14 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
         val hideHints = SettingsStore.getBoolean(this, SettingsStore.KEY_HIDE_LONG_PRESS_HINTS, false)
         val baseHintMap = when {
-            showingSymbols && mode != InputMode.ENGLISH -> banglaDigitHints
+            // Point: Bangla's symbols pages reuse the exact same key codes as
+            // English's symbols pages for shared symbols (-, (, ), ৳, ✪, etc),
+            // so they should get the same corner hints too - previously this
+            // branch was ONLY banglaDigitHints, silently dropping every
+            // symbol hint (and its long-press picker) on Bangla's symbols
+            // pages even though English's identical symbols showed them fine.
+            showingSymbols && symbolsPageTwo && mode != InputMode.ENGLISH -> banglaDigitHints + symbols2Hints
+            showingSymbols && mode != InputMode.ENGLISH -> banglaDigitHints + symbolsRow3Hints + symbolsRow4Hints
             showingSymbols && symbolsPageTwo -> englishNumberRowHints + symbols2Hints
             showingSymbols -> englishNumberRowHints + symbolsRow3Hints + symbolsRow4Hints
             mode == InputMode.BANGLA_TRADITIONAL -> banglaTraditionalHints
@@ -1189,10 +1196,21 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
         if (!doubleSpaceTab && doubleSpacePeriod && lastCommittedWasSpace && rawWordBuffer.isEmpty()) {
             ic.deleteSurroundingText(1, 0)
-            ic.commitText(". ", 1)
-            val autoCapOn = SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)
-            capitalizeNext = autoCapOn
-            if (autoCapOn) syncShiftedDisplay(true)
+            if (mode == InputMode.BANGLA_TRADITIONAL) {
+                // Point: Bangla has no case, so it gets its own full-stop
+                // (।) here instead of ".", and skips the capitalize-next /
+                // syncShiftedDisplay(true) call below entirely - that call
+                // now also flips Bangla's shift icon (see the earlier
+                // syncShiftedDisplay fix), which would wrongly switch the
+                // visible keyboard to the shifted Bangla layout on a plain
+                // double-space.
+                ic.commitText("\u0964 ", 1)
+            } else {
+                ic.commitText(". ", 1)
+                val autoCapOn = SettingsStore.getBoolean(this, SettingsStore.KEY_AUTO_CAPITALIZATION, true)
+                capitalizeNext = autoCapOn
+                if (autoCapOn) syncShiftedDisplay(true)
+            }
             lastCommittedWasSpace = false
             resetWordState()
             return
