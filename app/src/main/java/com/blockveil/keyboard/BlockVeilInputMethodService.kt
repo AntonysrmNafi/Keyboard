@@ -639,10 +639,14 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
         clipboardPanel = view.findViewById(R.id.clipboard_panel)
         clipboardList = view.findViewById(R.id.clipboard_list)
-        view.findViewById<android.widget.ImageView>(R.id.clipboard_close_button).setOnClickListener { hideClipboardPanel() }
+        // Point: "Manage" replaces the old back-arrow + "Clear all" row -
+        // opens Settings > Clipboard (same safe MainActivity-first
+        // navigation pattern used for the gear icon, see MainActivity).
         view.findViewById<TextView>(R.id.clipboard_clear_button).setOnClickListener {
-            ClipboardStore.clear(this)
-            refreshClipboardList()
+            val intent = android.content.Intent(this, MainActivity::class.java)
+            intent.putExtra(MainActivity.EXTRA_OPEN_CLIPBOARD, true)
+            intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(intent)
         }
 
         return view
@@ -1422,10 +1426,12 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         // Point: pinned items always render as their own section at the
         // BOTTOM of the grid, under a "Pinned" header, and stay there
         // across refreshes regardless of copy order - unpinned items keep
-        // their normal newest-first order above, 2 cards per row.
+        // their normal newest-first order above, 2 cards per row. The
+        // "Recent" label itself now lives in the top bar (replacing the old
+        // back arrow), not here, so this section starts straight with the
+        // unpinned grid.
         val (pinned, unpinned) = items.partition { it.pinned }
 
-        addClipboardSectionHeader(getString(R.string.clipboard_recent_header))
         addClipboardGrid(unpinned)
 
         if (pinned.isNotEmpty()) {
@@ -1469,10 +1475,11 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     }
 
     // Point: one Gboard-style grid card - rounded mint background, a
-    // circular pin badge in the top-left corner (brighter green when
-    // pinned, muted when not) that toggles pinned on tap, and the copied
-    // text below. Tapping the card body (not the badge) pastes the item's
-    // full stored text and closes the panel.
+    // circular pin badge in the top-left corner that pins the item on tap,
+    // and the copied text below. Once an item IS pinned, the badge is
+    // dropped entirely (no unpin control) - pinning is permanent, matching
+    // the "Pinned" section's own behavior. Tapping the card body (not the
+    // badge) pastes the item's full stored text and closes the panel.
     private fun addClipboardCard(parent: LinearLayout, item: ClipboardStore.ClipboardItem) {
         val displayText = when (item.type) {
             "text" -> ClipboardStore.buildPreview(item.text ?: "")
@@ -1497,22 +1504,25 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
                 }
             }
         }
-        card.addView(ImageView(this).apply {
-            setImageResource(R.drawable.ic_pin_24)
-            background = resources.getDrawable(R.drawable.bg_pin_badge).mutate()
-            val badgeColor = resources.getColor(
-                if (item.pinned) R.color.clipboard_pin_badge_active else R.color.clipboard_pin_inactive
-            )
-            (background as? android.graphics.drawable.GradientDrawable)?.setColor(badgeColor)
-            setColorFilter(resources.getColor(R.color.clipboard_pin_icon))
-            val size = dpPx(32)
-            layoutParams = LinearLayout.LayoutParams(size, size)
-            setPadding(dpPx(7), dpPx(7), dpPx(7), dpPx(7))
-            setOnClickListener {
-                ClipboardStore.togglePin(this@BlockVeilInputMethodService, item.id)
-                refreshClipboardList()
-            }
-        })
+        if (!item.pinned) {
+            card.addView(ImageView(this).apply {
+                setImageResource(R.drawable.ic_pin_24)
+                background = resources.getDrawable(R.drawable.bg_pin_badge).mutate()
+                (background as? android.graphics.drawable.GradientDrawable)?.setColor(
+                    resources.getColor(R.color.clipboard_pin_inactive)
+                )
+                setColorFilter(resources.getColor(R.color.clipboard_pin_icon))
+                // Point: badge size reduced 37% from the original 32dp (32 * 0.63 = ~20dp),
+                // padding scaled down to match (7 * 0.63 = ~4dp).
+                val size = dpPx(20)
+                layoutParams = LinearLayout.LayoutParams(size, size)
+                setPadding(dpPx(4), dpPx(4), dpPx(4), dpPx(4))
+                setOnClickListener {
+                    ClipboardStore.togglePin(this@BlockVeilInputMethodService, item.id)
+                    refreshClipboardList()
+                }
+            })
+        }
         card.addView(TextView(this).apply {
             text = displayText
             setTextColor(resources.getColor(R.color.clipboard_card_text))
