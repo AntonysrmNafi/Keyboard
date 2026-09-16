@@ -14,6 +14,9 @@ object ClipboardStore {
     private const val PREFS_NAME = "blockveil_clipboard"
     private const val KEY_ITEMS = "items"
     private const val MAX_ITEMS = 10
+    // Point: default expiry for clipboard history entries - an item older
+    // than this is dropped the next time the list is read or written to.
+    private const val EXPIRY_MS = 60 * 60 * 1000L // 1 hour
 
     data class ClipboardItem(
         val id: String,
@@ -25,7 +28,7 @@ object ClipboardStore {
 
     fun getItems(context: Context): List<ClipboardItem> {
         val raw = prefs(context).getString(KEY_ITEMS, null) ?: return emptyList()
-        return try {
+        val all = try {
             val array = JSONArray(raw)
             (0 until array.length()).map { i ->
                 val obj = array.getJSONObject(i)
@@ -40,6 +43,14 @@ object ClipboardStore {
         } catch (e: Exception) {
             emptyList()
         }
+        val now = System.currentTimeMillis()
+        val fresh = all.filter { now - it.timestamp < EXPIRY_MS }
+        if (fresh.size != all.size) {
+            // Point: persist the expiry too, not just hide expired items -
+            // otherwise they'd reappear if something re-reads the raw prefs.
+            save(context, fresh)
+        }
+        return fresh
     }
 
     fun addTextItem(context: Context, text: String) {
@@ -103,4 +114,29 @@ object ClipboardStore {
 
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    // Point: shared preview-truncation helper for anywhere clipboard items
+    // are listed (the keyboard's own clipboard panel, and Settings >
+    // Clipboard) - caps at PREVIEW_MAX_CHARS total, forced onto rows of at
+    // most PREVIEW_CHARS_PER_LINE characters each (ignoring any newlines
+    // already in the original text, so a long single-line copy and a
+    // multi-line copy preview the same way). Never touches the stored
+    // ClipboardItem.text itself, and pasting always uses the full text -
+    // this is display-only.
+    const val PREVIEW_MAX_CHARS = 120
+    const val PREVIEW_CHARS_PER_LINE = 25
+    const val PREVIEW_MAX_LINES = 5 // ceil(120 / 25)
+
+    fun buildPreview(text: String): String {
+        val capped = if (text.length > PREVIEW_MAX_CHARS) text.substring(0, PREVIEW_MAX_CHARS) else text
+        val sb = StringBuilder()
+        var i = 0
+        while (i < capped.length) {
+            val end = (i + PREVIEW_CHARS_PER_LINE).coerceAtMost(capped.length)
+            sb.append(capped, i, end)
+            if (end < capped.length) sb.append('\n')
+            i = end
+        }
+        return sb.toString()
+    }
 }
