@@ -150,14 +150,14 @@
                 android:gravity="center_vertical"
                 android:padding="10dp">
 
-                <ImageView
-                    android:id="@+id/clipboard_close_button"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/arrow_back_24"
-                    android:tint="@color/ime_text_primary"
-                    android:contentDescription="@string/back_arrow"
-                    android:paddingEnd="12dp" />
+                <TextView
+                    android:id="@+id/clipboard_recent_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/clipboard_recent_header"
+                    android:textColor="@color/ime_text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
 
                 <View
                     android:layout_width="0dp"
@@ -168,7 +168,7 @@
                     android:id="@+id/clipboard_clear_button"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/clear_all"
+                    android:text="@string/manage_label"
                     android:textColor="@color/ime_text_secondary"
                     android:textSize="13sp" />
             </LinearLayout>
