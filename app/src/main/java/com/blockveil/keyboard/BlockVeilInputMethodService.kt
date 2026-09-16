@@ -1030,8 +1030,13 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         giveKeyFeedback()
         when (code) {
             COPY_KEY_CODE -> {
+                val fullLength = ic.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)?.text?.length ?: 0
                 ic.performContextMenuAction(android.R.id.selectAll)
                 ic.performContextMenuAction(android.R.id.copy)
+                // Point: selectAll leaves the whole field visibly highlighted
+                // after copying - collapse it back to a plain cursor at the
+                // end instead of leaving everything selected.
+                ic.setSelection(fullLength, fullLength)
                 showActionToast("Text Copied")
             }
             CUT_KEY_CODE -> {
@@ -1414,7 +1419,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
         items.forEach { item ->
             val displayText = when (item.type) {
-                "text" -> item.text ?: "(empty)"
+                "text" -> ClipboardStore.buildPreview(item.text ?: "")
                 "image" -> "\uD83D\uDCCE Image"
                 else -> "(unknown)"
             }
@@ -1422,11 +1427,13 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
                 this.text = displayText
                 setTextColor(resources.getColor(R.color.ime_text_primary))
                 textSize = 14f
-                maxLines = 2
+                maxLines = ClipboardStore.PREVIEW_MAX_LINES
                 ellipsize = TextUtils.TruncateAt.END
                 setPadding(dpPx(20), dpPx(12), dpPx(20), dpPx(12))
                 setOnClickListener {
                     if (item.type == "text" && item.text != null) {
+                        // Point: paste always uses the item's full stored
+                        // text, not the (possibly truncated) preview above.
                         currentInputConnection?.commitText(item.text, 1)
                         hideClipboardPanel()
                     }
