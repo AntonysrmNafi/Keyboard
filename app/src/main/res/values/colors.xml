@@ -27,7 +27,6 @@
     <!-- Point: clipboard panel Gboard-style 2-column card grid -->
     <color name="clipboard_card_bg">#A6DDBE</color>
     <color name="clipboard_card_text">#174A3D</color>
-    <color name="clipboard_pin_badge_active">#0F7A6D</color>
     <color name="clipboard_pin_inactive">#7FB89C</color>
     <color name="clipboard_pin_icon">#FFFFFF</color>
 </resources>
