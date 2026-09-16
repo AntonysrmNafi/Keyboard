@@ -209,7 +209,10 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         2527 to "\u09CD\u09AF", // য় -> ্য
         2509 to "\u0981", // ্ -> ঁ
         2524 to "\u09B0\u09CD", // ড় -> র্
-        2480 to "\u09DC"  // র -> ড়
+        2480 to "\u09DC",  // র -> ড়
+        2448 to "\u099E", // shift ঐ -> ঞ
+        2441 to "\u09CE", // shift উ -> ৎ
+        2479 to "\u09CD\u09AF" // shift য -> ্য
     )
 
     // Point: Symbols1's number row now shows the same Bengali-digit hints as
@@ -364,6 +367,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             2509 to listOf("\u09BC", "\u0981"), // bangla ্ -> ় ঁ (corner hint shows "ঁ")
             2524 to listOf("\u09B0\u09CD", "\u09CD\u09B0"), // bangla ড় -> র্ ্র (corner hint shows "র্")
             2480 to listOf("\u09B0\u200D\u09CD\u09AF", "\u09F0", "\u09F1", "\u09B0\u09CD", "\u09DC", "\u09CD\u09B0"), // bangla র -> র‍্য ৰ ৱ র্ ড় ্র (corner hint shows "ড়")
+            2479 to listOf("\u09CD\u09AF", "\u09B0\u200D\u09CD\u09AF"), // bangla shift য -> ্য র‍্য (corner hint shows "্য")
             46 to listOf(                 // . -> 16-option grid (corner hint shows "...")
                 "&", "%", "+", "\"", "-", ":", "'", "@",  // row 1 (top, farther from key)
                 ";", "/", "(", ")", "#", "!", ",", "?"    // row 2 (bottom, closest to key)
@@ -396,7 +400,8 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             2527 to 0, // bangla য়: primary hint is '্য' (options[0])
             2509 to 1, // bangla ্: primary hint is 'ঁ' (options[1])
             2524 to 0, // bangla ড়: primary hint is 'র্' (options[0])
-            2480 to 4  // bangla র: primary hint is 'ড়' (options[4])
+            2480 to 4,  // bangla র: primary hint is 'ড়' (options[4])
+            2479 to 0   // bangla shift য: primary hint is '্য' (options[0])
         )
         keyboardView.multiHintColumns = mapOf(
             46 to 8,  // . -> 8 per row (16 options = 2 rows)
@@ -442,7 +447,8 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             2527 to +1f, // bangla য় -> horizontal shift in dp
             2509 to +1f, // bangla ্ -> horizontal shift in dp
             2524 to +1f, // bangla ড় -> horizontal shift in dp
-            2480 to +1f  // bangla র -> horizontal shift in dp
+            2480 to +1f, // bangla র -> horizontal shift in dp
+            2479 to +1f  // bangla shift য -> horizontal shift in dp
         )
         keyboardView.onHintLongPress = { hint -> insertHintChar(hint) }
         keyboardView.onMultiHintShow = { options, selectedIndex, screenX, screenY, optionWidthPx, rowHeightPx, columns ->
@@ -1055,6 +1061,13 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         englishKeyboardPlain.isShifted = shifted
         englishKeyboardWithNumRow.isShifted = shifted
         englishKeyboardWithNumRowLarge.isShifted = shifted
+        // Point: also mirror onto the Bangla keyboards so the shift icon
+        // fills in with color the same way it does on English - previously
+        // only the English objects got isShifted set here, so Bangla's
+        // shift key never showed as "active" even while the shifted
+        // (traditionalKeyboardShifted) layout was on screen.
+        traditionalKeyboard.isShifted = shifted
+        traditionalKeyboardShifted.isShifted = shifted
         if (mode == InputMode.BANGLA_TRADITIONAL) {
             applyKeyboardForMode()
         }
@@ -1103,14 +1116,14 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             return
         }
 
-        // Point 0: typing ".", ",", ";", "!" or "?" automatically adds a
-        // trailing space right after it too, and starts the next word
-        // capitalized - so you don't need to manually press space after
-        // ending a sentence or a clause. Works from the symbols page too
-        // (where ; and ! live), but not from the numpad (its "." is a
-        // decimal point, not sentence punctuation).
+        // Point 0: typing ".", ",", ";", "!", "?" or Bangla's own full-stop
+        // "।" automatically adds a trailing space right after it too, and
+        // starts the next word capitalized - so you don't need to manually
+        // press space after ending a sentence or a clause. Works from the
+        // symbols page too (where ; and ! live), but not from the numpad
+        // (its "." is a decimal point, not sentence punctuation).
         if (!showingNumpad && (typedChar == '.' || typedChar == ',' || typedChar == ';' ||
-                typedChar == '!' || typedChar == '?')
+                typedChar == '!' || typedChar == '?' || typedChar == '\u0964')
         ) {
             if (rawWordBuffer.isNotEmpty()) {
                 commitWordBoundary(ic, "")
