@@ -22,10 +22,10 @@
     <string name="icon_clipboard">&#128203;</string>
     <string name="icon_one_handed">&#9995;</string>
     <string name="clipboard_title">Clipboard</string>
-    <string name="clear_all">Clear all</string>
     <string name="clipboard_empty">Nothing copied yet</string>
     <string name="pinned_section_header">Pinned</string>
     <string name="clipboard_recent_header">Recent</string>
+    <string name="manage_label">Manage</string>
     <string name="icon_text_tool">T</string>
     <string name="icon_emoji_top">&#128522;</string>
     <string name="icon_123_top">123</string>
