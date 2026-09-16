@@ -23,4 +23,10 @@
     <color name="ime_text_primary">#174A3D</color>
     <color name="ime_text_secondary">#3A5F52</color>
     <color name="ime_suggestion_text">#174A3D</color>
+
+    <!-- Point: clipboard panel Gboard-style list redesign -->
+    <color name="clipboard_item_bg">#FFFFFF</color>
+    <color name="clipboard_item_text">#202124</color>
+    <color name="clipboard_divider">#E0E0E0</color>
+    <color name="clipboard_pin_inactive">#9AA0A6</color>
 </resources>
