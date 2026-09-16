@@ -410,7 +410,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         keyboardView.multiHintCellScale = mapOf(
             46 to 1f // . -> option cells 25% bigger than the other multi-hint keys
         )
-        keyboardView.multiHintRowHeightScale = 1f // global: lower this to shrink every popup's height
+        keyboardView.multiHintRowHeightScale = 0.4f // global: lower this to shrink every popup's height
         keyboardView.multiHintOffsetX = mapOf(
             46 to +1f,  // . -> horizontal shift in dp (negative = left, positive = right)
             107 to +1f, // k -> horizontal shift in dp
