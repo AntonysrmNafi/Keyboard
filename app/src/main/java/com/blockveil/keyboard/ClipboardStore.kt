@@ -23,7 +23,8 @@ object ClipboardStore {
         val type: String, // "text" or "image"
         val text: String?, // for text items
         val imageBase64: String?, // for image items (base64-encoded PNG/JPEG)
-        val timestamp: Long
+        val timestamp: Long,
+        val pinned: Boolean = false
     )
 
     fun getItems(context: Context): List<ClipboardItem> {
@@ -37,14 +38,17 @@ object ClipboardStore {
                     type = obj.getString("type"),
                     text = obj.optString("text").takeIf { it.isNotEmpty() },
                     imageBase64 = obj.optString("imageBase64").takeIf { it.isNotEmpty() },
-                    timestamp = obj.getLong("timestamp")
+                    timestamp = obj.getLong("timestamp"),
+                    pinned = obj.optBoolean("pinned", false)
                 )
             }
         } catch (e: Exception) {
             emptyList()
         }
         val now = System.currentTimeMillis()
-        val fresh = all.filter { now - it.timestamp < EXPIRY_MS }
+        // Point: a pinned item is exempt from the 1-hour expiry - "stay
+        // there permanently" means pinning overrides auto-delete.
+        val fresh = all.filter { it.pinned || now - it.timestamp < EXPIRY_MS }
         if (fresh.size != all.size) {
             // Point: persist the expiry too, not just hide expired items -
             // otherwise they'd reappear if something re-reads the raw prefs.
@@ -83,6 +87,15 @@ object ClipboardStore {
         save(context, current)
     }
 
+    // Point: toggles pinned on/off for one item (second click un-pins).
+    fun togglePin(context: Context, itemId: String) {
+        val current = getItems(context).toMutableList()
+        val idx = current.indexOfFirst { it.id == itemId }
+        if (idx == -1) return
+        current[idx] = current[idx].copy(pinned = !current[idx].pinned)
+        save(context, current)
+    }
+
     fun clear(context: Context) {
         save(context, emptyList())
     }
@@ -91,8 +104,13 @@ object ClipboardStore {
         val current = getItems(context).toMutableList()
         current.removeAll { it.id == item.id }
         current.add(0, item)
-        while (current.size > MAX_ITEMS) {
-            current.removeAt(current.size - 1)
+        // Point: only trim unpinned items when over the cap - a pinned item
+        // should stay ("permanently") even past MAX_ITEMS worth of new
+        // copies coming in.
+        while (current.count { !it.pinned } > MAX_ITEMS) {
+            val oldestUnpinnedIdx = current.indexOfLast { !it.pinned }
+            if (oldestUnpinnedIdx == -1) break
+            current.removeAt(oldestUnpinnedIdx)
         }
         save(context, current)
     }
@@ -106,6 +124,7 @@ object ClipboardStore {
                 if (item.text != null) put("text", item.text)
                 if (item.imageBase64 != null) put("imageBase64", item.imageBase64)
                 put("timestamp", item.timestamp)
+                put("pinned", item.pinned)
             }
             array.put(obj)
         }
