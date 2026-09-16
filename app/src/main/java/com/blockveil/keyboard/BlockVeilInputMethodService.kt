@@ -1406,6 +1406,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     private fun refreshClipboardList() {
         clipboardList.removeAllViews()
+        clipboardList.setPadding(dpPx(12), dpPx(8), dpPx(12), dpPx(8))
         val items = ClipboardStore.getItems(this)
 
         if (items.isEmpty()) {
@@ -1419,48 +1420,74 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         }
 
         // Point: pinned items always render as their own section at the
-        // BOTTOM of the list, under a "Pinned" header, and stay there across
-        // refreshes regardless of copy order - unpinned items keep their
-        // normal newest-first order above.
+        // BOTTOM of the grid, under a "Pinned" header, and stay there
+        // across refreshes regardless of copy order - unpinned items keep
+        // their normal newest-first order above, 2 cards per row.
         val (pinned, unpinned) = items.partition { it.pinned }
 
-        unpinned.forEach { item -> addClipboardRow(item) }
+        addClipboardSectionHeader(getString(R.string.clipboard_recent_header))
+        addClipboardGrid(unpinned)
 
         if (pinned.isNotEmpty()) {
-            clipboardList.addView(TextView(this).apply {
-                text = getString(R.string.pinned_section_header)
-                setTextColor(resources.getColor(R.color.ime_text_secondary))
-                textSize = 12f
-                setPadding(dpPx(16), dpPx(12), dpPx(16), dpPx(4))
-            })
-            pinned.forEach { item -> addClipboardRow(item) }
+            addClipboardSectionHeader(getString(R.string.pinned_section_header))
+            addClipboardGrid(pinned)
         }
     }
 
-    // Point: one Gboard-style list row - plain white background, 16sp
-    // #202124 text, 16dp padding, a pin icon on the right that toggles
-    // pinned (grey when off, accent when on), and a 1dp #E0E0E0 divider
-    // below. Tapping the text (not the pin) pastes the item's full stored
-    // text and closes the panel, same as before.
-    private fun addClipboardRow(item: ClipboardStore.ClipboardItem) {
+    private fun addClipboardSectionHeader(title: String) {
+        clipboardList.addView(TextView(this).apply {
+            text = title
+            setTextColor(resources.getColor(R.color.ime_text_primary))
+            textSize = 15f
+            setPadding(dpPx(4), dpPx(12), dpPx(4), dpPx(8))
+        })
+    }
+
+    // Point: lays items out 2-per-row (Gboard's clip-tray grid), pairing
+    // them off in order; an odd item out gets a same-width empty spacer so
+    // it doesn't stretch to fill the whole row.
+    private fun addClipboardGrid(items: List<ClipboardStore.ClipboardItem>) {
+        var i = 0
+        while (i < items.size) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            addClipboardCard(row, items[i])
+            if (i + 1 < items.size) {
+                addClipboardCard(row, items[i + 1])
+            } else {
+                row.addView(View(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(0, 0, 1f)
+                })
+            }
+            clipboardList.addView(row)
+            i += 2
+        }
+    }
+
+    // Point: one Gboard-style grid card - rounded mint background, a
+    // circular pin badge in the top-left corner (brighter green when
+    // pinned, muted when not) that toggles pinned on tap, and the copied
+    // text below. Tapping the card body (not the badge) pastes the item's
+    // full stored text and closes the panel.
+    private fun addClipboardCard(parent: LinearLayout, item: ClipboardStore.ClipboardItem) {
         val displayText = when (item.type) {
             "text" -> ClipboardStore.buildPreview(item.text ?: "")
             "image" -> "\uD83D\uDCCE Image"
             else -> "(unknown)"
         }
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setBackgroundColor(resources.getColor(R.color.clipboard_item_bg))
-            setPadding(dpPx(16), dpPx(16), dpPx(16), dpPx(16))
-        }
-        row.addView(TextView(this).apply {
-            text = displayText
-            setTextColor(resources.getColor(R.color.clipboard_item_text))
-            textSize = 16f
-            maxLines = ClipboardStore.PREVIEW_MAX_LINES
-            ellipsize = TextUtils.TruncateAt.END
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = resources.getDrawable(R.drawable.bg_clipboard_card)
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = dpPx(8)
+                topMargin = dpPx(8)
+                bottomMargin = dpPx(8)
+            }
+            setPadding(dpPx(12), dpPx(12), dpPx(12), dpPx(14))
             setOnClickListener {
                 if (item.type == "text" && item.text != null) {
                     // Point: paste always uses the item's full stored text,
@@ -1469,25 +1496,32 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
                     hideClipboardPanel()
                 }
             }
-        })
-        row.addView(ImageView(this).apply {
+        }
+        card.addView(ImageView(this).apply {
             setImageResource(R.drawable.ic_pin_24)
-            setColorFilter(
-                resources.getColor(if (item.pinned) R.color.accent_mint else R.color.clipboard_pin_inactive)
+            background = resources.getDrawable(R.drawable.bg_pin_badge).mutate()
+            val badgeColor = resources.getColor(
+                if (item.pinned) R.color.clipboard_pin_badge_active else R.color.clipboard_pin_inactive
             )
-            layoutParams = LinearLayout.LayoutParams(dpPx(20), dpPx(20)).apply {
-                marginStart = dpPx(12)
-            }
+            (background as? android.graphics.drawable.GradientDrawable)?.setColor(badgeColor)
+            setColorFilter(resources.getColor(R.color.clipboard_pin_icon))
+            val size = dpPx(32)
+            layoutParams = LinearLayout.LayoutParams(size, size)
+            setPadding(dpPx(7), dpPx(7), dpPx(7), dpPx(7))
             setOnClickListener {
                 ClipboardStore.togglePin(this@BlockVeilInputMethodService, item.id)
                 refreshClipboardList()
             }
         })
-        clipboardList.addView(row)
-        clipboardList.addView(View(this).apply {
-            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpPx(1))
-            setBackgroundColor(resources.getColor(R.color.clipboard_divider))
+        card.addView(TextView(this).apply {
+            text = displayText
+            setTextColor(resources.getColor(R.color.clipboard_card_text))
+            textSize = 15f
+            maxLines = 3
+            ellipsize = TextUtils.TruncateAt.END
+            setPadding(0, dpPx(10), 0, 0)
         })
+        parent.addView(card)
     }
 
     private fun dpPx(value: Int): Int = (value * resources.displayMetrics.density).toInt()
