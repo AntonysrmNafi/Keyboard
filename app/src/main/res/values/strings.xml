@@ -24,6 +24,7 @@
     <string name="clipboard_title">Clipboard</string>
     <string name="clear_all">Clear all</string>
     <string name="clipboard_empty">Nothing copied yet</string>
+    <string name="pinned_section_header">Pinned</string>
     <string name="icon_text_tool">T</string>
     <string name="icon_emoji_top">&#128522;</string>
     <string name="icon_123_top">123</string>
