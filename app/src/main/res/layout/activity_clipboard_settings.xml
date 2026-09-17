@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/clipboard_settings_bg">
+
+    <!-- Normal top bar: back arrow, "Clipboard" title, + add button -->
+    <LinearLayout
+        android:id="@+id/clipboard_normal_topbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="16dp">
+
+        <ImageView
+            android:id="@+id/clipboard_back_button"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:src="@drawable/arrow_back_24"
+            android:tint="@color/clipboard_settings_text_primary"
+            android:contentDescription="@string/back_arrow"
+            android:paddingEnd="16dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/clipboard_title"
+            android:textColor="@color/clipboard_settings_text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/clipboard_add_button"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:src="@drawable/ic_add_24"
+            android:tint="@color/clipboard_settings_text_primary"
+            android:contentDescription="@string/clipboard_add_entry" />
+    </LinearLayout>
+
+    <!-- Selection-mode top bar: X to cancel, "N selected", pin, delete -->
+    <LinearLayout
+        android:id="@+id/clipboard_selection_topbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="16dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/clipboard_selection_cancel"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:src="@drawable/ic_close_24"
+            android:tint="@color/clipboard_settings_text_primary"
+            android:paddingEnd="16dp" />
+
+        <TextView
+            android:id="@+id/clipboard_selection_count"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/clipboard_settings_text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/clipboard_selection_pin"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_pin_24"
+            android:tint="@color/clipboard_settings_accent"
+            android:paddingEnd="20dp" />
+
+        <ImageView
+            android:id="@+id/clipboard_selection_delete"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_delete_24"
+            android:tint="@color/clipboard_settings_delete" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/clipboard_row_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp" />
+    </ScrollView>
+
+</LinearLayout>
