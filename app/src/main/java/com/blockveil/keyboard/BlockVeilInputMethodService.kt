@@ -1449,47 +1449,59 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         })
     }
 
-    // Point: lays items out 2-per-row (Gboard's clip-tray grid), pairing
-    // Point: lays items out 2-per-row (Gboard's clip-tray grid), pairing
-    // them off in order; an odd item out gets a same-width empty spacer so
-    // it doesn't stretch to fill the whole row.
+    // Point: genuine masonry (Pinterest-style) 2-column packing - each card
+    // is measured up front and always placed into whichever column
+    // currently has the shorter total height. Row-pairing (put items 0,1 in
+    // a row, 2,3 in the next) leaves a big gap under a short card whenever
+    // its row-sibling is much taller, because the next row can't start
+    // until BOTH cards in the row above are done; masonry avoids that by
+    // never locking cards into shared rows at all.
     private fun addClipboardGrid(items: List<ClipboardStore.ClipboardItem>) {
-        var i = 0
-        while (i < items.size) {
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-            }
-            addClipboardCell(row, items[i])
-            if (i + 1 < items.size) {
-                addClipboardCell(row, items[i + 1])
-            } else {
-                row.addView(View(this).apply {
-                    layoutParams = LinearLayout.LayoutParams(0, 0, 1f)
-                })
-            }
-            clipboardList.addView(row)
-            i += 2
+        if (items.isEmpty()) return
+        val gridRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            )
         }
-    }
-
-    // Point: a weighted LinearLayout child with layout_height=WRAP_CONTENT
-    // still gets stretched to match its tallest row-sibling in practice
-    // (a known Android LinearLayout quirk with weighted horizontal
-    // children) - so the card itself is never given weight directly.
-    // Instead, this invisible, background-less wrapper takes the weight and
-    // absorbs any stretch; the actual visibly-colored card inside it is a
-    // plain, unweighted, WRAP_CONTENT child, so it always stays exactly as
-    // tall as its own text - no leftover green space below shorter cards.
-    private fun addClipboardCell(row: LinearLayout, item: ClipboardStore.ClipboardItem) {
-        val cell = LinearLayout(this).apply {
+        val leftColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginEnd = dpPx(3)
+            }
+        }
+        val rightColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
-        addClipboardCard(cell, item)
-        row.addView(cell)
+        gridRow.addView(leftColumn)
+        gridRow.addView(rightColumn)
+        clipboardList.addView(gridRow)
+
+        // Point: measure each card against its REAL final width (half the
+        // panel, minus the 3dp gaps) before deciding a column - measuring
+        // with an unspecified/unbounded width would let the text lay out on
+        // one long line and report a too-short height, picking the wrong
+        // column.
+        val panelWidthPx = keyboardView.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+        val columnWidthPx = (panelWidthPx - dpPx(3) * 3) / 2
+        val widthSpec = View.MeasureSpec.makeMeasureSpec(columnWidthPx, View.MeasureSpec.EXACTLY)
+        val heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+
+        var leftHeight = 0
+        var rightHeight = 0
+        items.forEach { item ->
+            val card = buildClipboardCard(item)
+            card.measure(widthSpec, heightSpec)
+            val cardHeight = card.measuredHeight
+            if (leftHeight <= rightHeight) {
+                leftColumn.addView(card)
+                leftHeight += cardHeight
+            } else {
+                rightColumn.addView(card)
+                rightHeight += cardHeight
+            }
+        }
     }
 
     // Point: one Gboard-style grid card - rounded mint background, a
@@ -1498,7 +1510,9 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     // dropped entirely (no unpin control) - pinning is permanent, matching
     // the "Pinned" section's own behavior. Tapping the card body (not the
     // badge) pastes the item's full stored text and closes the panel.
-    private fun addClipboardCard(parent: LinearLayout, item: ClipboardStore.ClipboardItem) {
+    // Returns the built card without attaching it to any parent yet - the
+    // caller (addClipboardGrid) measures it first to pick a column.
+    private fun buildClipboardCard(item: ClipboardStore.ClipboardItem): LinearLayout {
         val displayText = when (item.type) {
             "text" -> ClipboardStore.buildPreview(item.text ?: "")
             "image" -> "\uD83D\uDCCE Image"
@@ -1507,17 +1521,10 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = resources.getDrawable(R.drawable.bg_clipboard_card)
-            // Point: no weight here (see addClipboardCell above) - plain
-            // match_parent width within its own single-child cell, and
-            // wrap_content height so it never stretches past its own text.
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                // Point: max 3dp gap on every side of every card - the outer
-                // left/right edges come from clipboardList's own 3dp padding
-                // above, so only marginEnd (between the 2 cards in a row)
-                // and top/bottom need setting here to keep every gap at 3dp.
-                marginEnd = dpPx(3)
+                // Point: max 3dp gap on every side of every card.
                 topMargin = dpPx(3)
                 bottomMargin = dpPx(3)
             }
@@ -1558,7 +1565,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             ellipsize = TextUtils.TruncateAt.END
             setPadding(0, dpPx(10), 0, 0)
         })
-        parent.addView(card)
+        return card
     }
 
     private fun dpPx(value: Int): Int = (value * resources.displayMetrics.density).toInt()
