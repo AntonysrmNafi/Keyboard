@@ -173,17 +173,154 @@
                     android:textSize="13sp" />
             </LinearLayout>
 
-            <ScrollView
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1">
 
-                <LinearLayout
-                    android:id="@+id/clipboard_list"
+                <ScrollView
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical" />
-            </ScrollView>
+                    android:layout_height="match_parent">
+
+                    <LinearLayout
+                        android:id="@+id/clipboard_list"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </ScrollView>
+
+                <!-- Point: long-press-on-item menu (full text preview +
+                     Pin/Unpin, Paste, Delete). Overlaid directly on top of
+                     the ScrollView within this same FrameLayout, so its
+                     scrim only dims the panel's own content area, not the
+                     toolbar row above it - matching the reference. -->
+                <FrameLayout
+                    android:id="@+id/clipboard_item_menu"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone">
+
+                    <View
+                        android:id="@+id/clipboard_item_menu_scrim"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@color/clipboard_menu_scrim"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <LinearLayout
+                        android:id="@+id/clipboard_item_menu_card"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginStart="16dp"
+                        android:layout_marginEnd="16dp"
+                        android:orientation="vertical"
+                        android:background="@drawable/bg_clipboard_menu_card"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <TextView
+                            android:id="@+id/clipboard_item_menu_text"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/clipboard_card_text"
+                            android:textSize="14sp"
+                            android:padding="16dp"
+                            android:gravity="center"
+                            android:maxLines="6"
+                            android:ellipsize="end" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:background="@drawable/bg_clipboard_menu_actions">
+
+                            <LinearLayout
+                                android:id="@+id/clipboard_item_menu_pin"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:padding="14dp"
+                                android:clickable="true"
+                                android:focusable="true">
+
+                                <ImageView
+                                    android:id="@+id/clipboard_item_menu_pin_icon"
+                                    android:layout_width="22dp"
+                                    android:layout_height="22dp"
+                                    android:src="@drawable/ic_pin_24"
+                                    android:tint="@color/clipboard_card_text" />
+
+                                <TextView
+                                    android:id="@+id/clipboard_item_menu_pin_label"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:text="@string/clipboard_action_pin"
+                                    android:textColor="@color/clipboard_card_text"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:id="@+id/clipboard_item_menu_paste"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:padding="14dp"
+                                android:clickable="true"
+                                android:focusable="true">
+
+                                <ImageView
+                                    android:layout_width="22dp"
+                                    android:layout_height="22dp"
+                                    android:src="@drawable/ic_paste_24"
+                                    android:tint="@color/clipboard_card_text" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:text="@string/clipboard_action_paste"
+                                    android:textColor="@color/clipboard_card_text"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:id="@+id/clipboard_item_menu_delete"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:padding="14dp"
+                                android:clickable="true"
+                                android:focusable="true">
+
+                                <ImageView
+                                    android:layout_width="22dp"
+                                    android:layout_height="22dp"
+                                    android:src="@drawable/ic_delete_24"
+                                    android:tint="@color/clipboard_card_text" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="4dp"
+                                    android:text="@string/clipboard_action_delete"
+                                    android:textColor="@color/clipboard_card_text"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+
+                        </LinearLayout>
+                    </LinearLayout>
+                </FrameLayout>
+            </FrameLayout>
 
         </LinearLayout>
 
