@@ -34,4 +34,19 @@
     <color name="clipboard_menu_scrim">#66000000</color>
     <color name="clipboard_menu_card_bg">#C9EBD7</color>
     <color name="clipboard_menu_action_bg">#8FCBA8</color>
+
+    <!-- Point: Settings > Clipboard screen - uses the SAME shared theme as
+         every other Settings screen (bg_dark/text_primary/text_secondary/
+         accent_mint/key_function above). The reference screenshot for this
+         screen's layout happened to be captured from an app in light mode,
+         but that was just that app's own state at the time - not something
+         to copy verbatim, since BlockVeil's Settings has always been dark. -->
+    <color name="clipboard_settings_bg">@color/bg_dark</color>
+    <color name="clipboard_settings_card_bg">@color/key_function</color>
+    <color name="clipboard_settings_text_primary">@color/text_primary</color>
+    <color name="clipboard_settings_text_secondary">@color/text_secondary</color>
+    <color name="clipboard_settings_accent">@color/accent_mint</color>
+    <color name="clipboard_settings_selected_bg">#336FE7B0</color>
+    <color name="clipboard_settings_selected_border">@color/accent_mint</color>
+    <color name="clipboard_settings_delete">#E57373</color>
 </resources>
