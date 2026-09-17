@@ -102,6 +102,25 @@ object ClipboardStore {
         save(context, current)
     }
 
+    // Point: explicitly sets pinned (not a toggle) - used by Settings >
+    // Clipboard's multi-select "pin" bulk action, where every selected item
+    // should end up pinned regardless of its individual prior state.
+    fun setPinned(context: Context, itemIds: Set<String>, pinned: Boolean) {
+        val current = getItems(context).toMutableList()
+        for (i in current.indices) {
+            if (current[i].id in itemIds) current[i] = current[i].copy(pinned = pinned)
+        }
+        save(context, current)
+    }
+
+    // Point: removes several items at once - Settings > Clipboard's
+    // multi-select "delete" bulk action.
+    fun removeItems(context: Context, itemIds: Set<String>) {
+        val current = getItems(context).toMutableList()
+        current.removeAll { it.id in itemIds }
+        save(context, current)
+    }
+
     fun clear(context: Context) {
         save(context, emptyList())
     }
