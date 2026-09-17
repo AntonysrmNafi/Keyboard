@@ -17,6 +17,12 @@ object ClipboardStore {
     // Point: default expiry for clipboard history entries - an item older
     // than this is dropped the next time the list is read or written to.
     private const val EXPIRY_MS = 60 * 60 * 1000L // 1 hour
+    // Point: onPrimaryClipChanged can fire more than once for a single
+    // system copy (a known Android platform quirk, not something this app
+    // triggers itself) - if the same text arrives again within this window,
+    // treat it as the same copy event and just refresh its timestamp
+    // instead of inserting a visible duplicate row.
+    private const val DEDUPE_WINDOW_MS = 3000L
 
     data class ClipboardItem(
         val id: String,
@@ -103,7 +109,18 @@ object ClipboardStore {
     private fun addItem(context: Context, item: ClipboardItem) {
         val current = getItems(context).toMutableList()
         current.removeAll { it.id == item.id }
-        current.add(0, item)
+        // Point: dedupe against a very recent identical copy (same type +
+        // text) instead of always inserting a new row - see DEDUPE_WINDOW_MS
+        // above for why this is needed.
+        val dupeIdx = current.indexOfFirst {
+            it.type == item.type && it.text == item.text &&
+                item.timestamp - it.timestamp < DEDUPE_WINDOW_MS
+        }
+        if (dupeIdx != -1) {
+            current[dupeIdx] = current[dupeIdx].copy(timestamp = item.timestamp)
+        } else {
+            current.add(0, item)
+        }
         // Point: only trim unpinned items when over the cap - a pinned item
         // should stay ("permanently") even past MAX_ITEMS worth of new
         // copies coming in.
