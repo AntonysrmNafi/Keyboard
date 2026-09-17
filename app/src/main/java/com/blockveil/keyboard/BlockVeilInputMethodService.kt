@@ -1410,7 +1410,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     private fun refreshClipboardList() {
         clipboardList.removeAllViews()
-        clipboardList.setPadding(dpPx(12), dpPx(8), dpPx(12), dpPx(8))
+        clipboardList.setPadding(dpPx(1), dpPx(1), dpPx(1), dpPx(1))
         val items = ClipboardStore.getItems(this)
 
         if (items.isEmpty()) {
@@ -1490,9 +1490,13 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             orientation = LinearLayout.VERTICAL
             background = resources.getDrawable(R.drawable.bg_clipboard_card)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginEnd = dpPx(8)
-                topMargin = dpPx(8)
-                bottomMargin = dpPx(8)
+                // Point: max 1dp gap on every side of every card - the outer
+                // left/right edges come from clipboardList's own 1dp padding
+                // above, so only marginEnd (between the 2 cards in a row)
+                // and top/bottom need setting here to keep every gap at 1dp.
+                marginEnd = dpPx(1)
+                topMargin = dpPx(1)
+                bottomMargin = dpPx(1)
             }
             setPadding(dpPx(12), dpPx(12), dpPx(12), dpPx(14))
             setOnClickListener {
