@@ -1410,7 +1410,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     private fun refreshClipboardList() {
         clipboardList.removeAllViews()
-        clipboardList.setPadding(dpPx(1), dpPx(1), dpPx(1), dpPx(1))
+        clipboardList.setPadding(dpPx(3), dpPx(3), dpPx(3), dpPx(3))
         val items = ClipboardStore.getItems(this)
 
         if (items.isEmpty()) {
@@ -1450,6 +1450,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     }
 
     // Point: lays items out 2-per-row (Gboard's clip-tray grid), pairing
+    // Point: lays items out 2-per-row (Gboard's clip-tray grid), pairing
     // them off in order; an odd item out gets a same-width empty spacer so
     // it doesn't stretch to fill the whole row.
     private fun addClipboardGrid(items: List<ClipboardStore.ClipboardItem>) {
@@ -1461,9 +1462,9 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
                 )
             }
-            addClipboardCard(row, items[i])
+            addClipboardCell(row, items[i])
             if (i + 1 < items.size) {
-                addClipboardCard(row, items[i + 1])
+                addClipboardCell(row, items[i + 1])
             } else {
                 row.addView(View(this).apply {
                     layoutParams = LinearLayout.LayoutParams(0, 0, 1f)
@@ -1472,6 +1473,23 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             clipboardList.addView(row)
             i += 2
         }
+    }
+
+    // Point: a weighted LinearLayout child with layout_height=WRAP_CONTENT
+    // still gets stretched to match its tallest row-sibling in practice
+    // (a known Android LinearLayout quirk with weighted horizontal
+    // children) - so the card itself is never given weight directly.
+    // Instead, this invisible, background-less wrapper takes the weight and
+    // absorbs any stretch; the actual visibly-colored card inside it is a
+    // plain, unweighted, WRAP_CONTENT child, so it always stays exactly as
+    // tall as its own text - no leftover green space below shorter cards.
+    private fun addClipboardCell(row: LinearLayout, item: ClipboardStore.ClipboardItem) {
+        val cell = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        addClipboardCard(cell, item)
+        row.addView(cell)
     }
 
     // Point: one Gboard-style grid card - rounded mint background, a
@@ -1489,14 +1507,19 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = resources.getDrawable(R.drawable.bg_clipboard_card)
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                // Point: max 1dp gap on every side of every card - the outer
-                // left/right edges come from clipboardList's own 1dp padding
+            // Point: no weight here (see addClipboardCell above) - plain
+            // match_parent width within its own single-child cell, and
+            // wrap_content height so it never stretches past its own text.
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                // Point: max 3dp gap on every side of every card - the outer
+                // left/right edges come from clipboardList's own 3dp padding
                 // above, so only marginEnd (between the 2 cards in a row)
-                // and top/bottom need setting here to keep every gap at 1dp.
-                marginEnd = dpPx(1)
-                topMargin = dpPx(1)
-                bottomMargin = dpPx(1)
+                // and top/bottom need setting here to keep every gap at 3dp.
+                marginEnd = dpPx(3)
+                topMargin = dpPx(3)
+                bottomMargin = dpPx(3)
             }
             setPadding(dpPx(12), dpPx(12), dpPx(12), dpPx(14))
             setOnClickListener {
