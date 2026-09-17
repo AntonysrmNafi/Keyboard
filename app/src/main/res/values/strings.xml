@@ -30,7 +30,6 @@
     <string name="clipboard_action_unpin">Unpin</string>
     <string name="clipboard_action_paste">Paste</string>
     <string name="clipboard_action_delete">Delete</string>
-    <string name="clipboard_title">Clipboard</string>
     <string name="clipboard_add_entry">Add clipboard entry</string>
     <string name="clipboard_selected_count">%1$d selected</string>
     <string name="clipboard_add_hint">Type text to add</string>
