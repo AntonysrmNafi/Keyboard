@@ -29,4 +29,9 @@
     <color name="clipboard_card_text">#174A3D</color>
     <color name="clipboard_pin_inactive">#7FB89C</color>
     <color name="clipboard_pin_icon">#FFFFFF</color>
+
+    <!-- Point: long-press item menu (preview + Pin/Unpin, Paste, Delete) -->
+    <color name="clipboard_menu_scrim">#66000000</color>
+    <color name="clipboard_menu_card_bg">#C9EBD7</color>
+    <color name="clipboard_menu_action_bg">#8FCBA8</color>
 </resources>
