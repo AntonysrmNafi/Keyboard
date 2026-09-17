@@ -14,6 +14,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -41,6 +42,13 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
     private lateinit var clipboardButton: android.widget.ImageView
     private lateinit var clipboardPanel: LinearLayout
     private lateinit var clipboardList: LinearLayout
+    private lateinit var clipboardItemMenu: FrameLayout
+    private lateinit var clipboardItemMenuText: TextView
+    private lateinit var clipboardItemMenuPin: LinearLayout
+    private lateinit var clipboardItemMenuPinIcon: ImageView
+    private lateinit var clipboardItemMenuPinLabel: TextView
+    private lateinit var clipboardItemMenuPaste: LinearLayout
+    private lateinit var clipboardItemMenuDelete: LinearLayout
     private lateinit var icon123Button: View
     private lateinit var iconEmojiButton: View
     private lateinit var emojiPanel: LinearLayout
@@ -639,6 +647,18 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
         clipboardPanel = view.findViewById(R.id.clipboard_panel)
         clipboardList = view.findViewById(R.id.clipboard_list)
+        clipboardItemMenu = view.findViewById(R.id.clipboard_item_menu)
+        clipboardItemMenuText = view.findViewById(R.id.clipboard_item_menu_text)
+        clipboardItemMenuPin = view.findViewById(R.id.clipboard_item_menu_pin)
+        clipboardItemMenuPinIcon = view.findViewById(R.id.clipboard_item_menu_pin_icon)
+        clipboardItemMenuPinLabel = view.findViewById(R.id.clipboard_item_menu_pin_label)
+        clipboardItemMenuPaste = view.findViewById(R.id.clipboard_item_menu_paste)
+        clipboardItemMenuDelete = view.findViewById(R.id.clipboard_item_menu_delete)
+        // Point: tapping the dimmed scrim (anywhere outside the menu card)
+        // dismisses the menu without taking any action.
+        view.findViewById<View>(R.id.clipboard_item_menu_scrim).setOnClickListener {
+            hideClipboardItemMenu()
+        }
         // Point: "Manage" replaces the old back-arrow + "Clear all" row -
         // opens Settings > Clipboard (same safe MainActivity-first
         // navigation pattern used for the gear icon, see MainActivity).
@@ -1343,6 +1363,48 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         if (!::clipboardPanel.isInitialized) return
         clipboardPanel.visibility = View.GONE
         keyboardView.visibility = View.VISIBLE
+        // Point: don't leave the item menu stuck open for next time the
+        // panel is reopened.
+        hideClipboardItemMenu()
+    }
+
+    // Point: long-press-on-item menu (full text preview + Pin/Unpin, Paste,
+    // Delete) - see input_view.xml's clipboard_item_menu. The text shown
+    // here is always the item's FULL stored text, never the truncated grid
+    // preview. Pin/Unpin both live in one button/label that flips based on
+    // the item's current pinned state, matching the reference exactly.
+    private fun showClipboardItemMenu(item: ClipboardStore.ClipboardItem) {
+        clipboardItemMenuText.text = when (item.type) {
+            "text" -> item.text ?: ""
+            "image" -> "\uD83D\uDCCE Image"
+            else -> ""
+        }
+        clipboardItemMenuPinLabel.text = getString(
+            if (item.pinned) R.string.clipboard_action_unpin else R.string.clipboard_action_pin
+        )
+        clipboardItemMenuPin.setOnClickListener {
+            ClipboardStore.togglePin(this, item.id)
+            hideClipboardItemMenu()
+            refreshClipboardList()
+        }
+        clipboardItemMenuPaste.setOnClickListener {
+            if (item.type == "text" && item.text != null) {
+                currentInputConnection?.commitText(item.text, 1)
+            }
+            hideClipboardItemMenu()
+            hideClipboardPanel()
+        }
+        clipboardItemMenuDelete.setOnClickListener {
+            ClipboardStore.removeItem(this, item.id)
+            hideClipboardItemMenu()
+            refreshClipboardList()
+        }
+        clipboardItemMenu.visibility = View.VISIBLE
+    }
+
+    private fun hideClipboardItemMenu() {
+        if (!::clipboardItemMenu.isInitialized) return
+        clipboardItemMenu.visibility = View.GONE
     }
 
     private fun showEmojiPanel() {
@@ -1536,6 +1598,10 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
                     currentInputConnection?.commitText(item.text, 1)
                     hideClipboardPanel()
                 }
+            }
+            setOnLongClickListener {
+                showClipboardItemMenu(item)
+                true
             }
         }
         if (!item.pinned) {
