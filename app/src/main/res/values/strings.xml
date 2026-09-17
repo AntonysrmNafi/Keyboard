@@ -26,6 +26,10 @@
     <string name="pinned_section_header">Pinned</string>
     <string name="clipboard_recent_header">Recent</string>
     <string name="manage_label">Manage</string>
+    <string name="clipboard_action_pin">Pin</string>
+    <string name="clipboard_action_unpin">Unpin</string>
+    <string name="clipboard_action_paste">Paste</string>
+    <string name="clipboard_action_delete">Delete</string>
     <string name="icon_text_tool">T</string>
     <string name="icon_emoji_top">&#128522;</string>
     <string name="icon_123_top">123</string>
