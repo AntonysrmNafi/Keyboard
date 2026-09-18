@@ -67,4 +67,17 @@ class ClipboardRowAdapter(
     }
 
     fun currentOrder(): List<ClipboardStore.ClipboardItem> = items.toList()
+
+    // Point: replaces this adapter's data in place (used by refresh()) -
+    // the SAME adapter instance stays attached to the RecyclerView and to
+    // its ItemTouchHelper for the activity's whole lifetime, so a drag
+    // gesture can never land on a stale/replaced adapter (that mismatch
+    // used to crash with IndexOutOfBoundsException - see moveItem above,
+    // which assumes fromPosition/toPosition are valid for THIS list).
+    fun updateItems(newItems: List<ClipboardStore.ClipboardItem>) {
+        if (items.map { it.id } == newItems.map { it.id }) return
+        items.clear()
+        items.addAll(newItems)
+        notifyDataSetChanged()
+    }
 }
