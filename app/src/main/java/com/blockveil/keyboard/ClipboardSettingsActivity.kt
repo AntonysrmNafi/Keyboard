@@ -119,28 +119,8 @@ class ClipboardSettingsActivity : Activity() {
         }
 
         pinnedHeader.visibility = if (pinned.isNotEmpty()) View.VISIBLE else View.GONE
-        setSectionItems(pinnedList, pinnedAdapter, pinned)
-        setSectionItems(unpinnedList, unpinnedAdapter, unpinned)
-    }
-
-    private fun setSectionItems(
-        recyclerView: RecyclerView,
-        adapter: ClipboardRowAdapter,
-        items: List<ClipboardStore.ClipboardItem>
-    ) {
-        val current = adapter.currentOrder()
-        // Point: only reset+rebind when the underlying data actually
-        // changed (add/remove/pin toggle) - not on every refresh() call, so
-        // an in-progress drag's in-memory order isn't clobbered by a
-        // same-data refresh.
-        if (current.map { it.id } == items.map { it.id }) return
-        recyclerView.adapter = ClipboardRowAdapter(
-            items = items.toMutableList(),
-            onItemClick = { item -> showEditClipDialog(item) },
-            onStartDrag = { holder -> touchHelperFor(recyclerView)?.startDrag(holder) }
-        ).also {
-            if (recyclerView === pinnedList) pinnedAdapter = it else unpinnedAdapter = it
-        }
+        pinnedAdapter.updateItems(pinned)
+        unpinnedAdapter.updateItems(unpinned)
     }
 
     private fun showAddDialog() {
@@ -173,8 +153,6 @@ class ClipboardSettingsActivity : Activity() {
         val dialog = Dialog(this).apply {
             requestWindowFeature(Window.FEATURE_NO_TITLE)
             window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
-            window?.setGravity(Gravity.BOTTOM)
-            window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         }
 
         var isPinned = item.pinned
@@ -309,6 +287,14 @@ class ClipboardSettingsActivity : Activity() {
 
         dialog.setContentView(root)
         dialog.show()
+        // Point: setLayout must happen AFTER show() - calling it before the
+        // window's content is attached doesn't reliably take effect, and
+        // the dialog was collapsing to a sliver (text wrapping one
+        // character per line) as a result.
+        dialog.window?.apply {
+            setGravity(Gravity.BOTTOM)
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
