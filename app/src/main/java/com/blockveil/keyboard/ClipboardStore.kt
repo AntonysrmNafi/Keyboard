@@ -102,23 +102,27 @@ object ClipboardStore {
         save(context, current)
     }
 
-    // Point: explicitly sets pinned (not a toggle) - used by Settings >
-    // Clipboard's multi-select "pin" bulk action, where every selected item
-    // should end up pinned regardless of its individual prior state.
-    fun setPinned(context: Context, itemIds: Set<String>, pinned: Boolean) {
+    // Point: overwrites the stored text of one item in place (keeps its id,
+    // timestamp and pinned state) - used by Settings > Clipboard's "Edit
+    // Clip" sheet Save button.
+    fun updateText(context: Context, itemId: String, newText: String) {
         val current = getItems(context).toMutableList()
-        for (i in current.indices) {
-            if (current[i].id in itemIds) current[i] = current[i].copy(pinned = pinned)
-        }
+        val idx = current.indexOfFirst { it.id == itemId }
+        if (idx == -1) return
+        current[idx] = current[idx].copy(text = newText)
         save(context, current)
     }
 
-    // Point: removes several items at once - Settings > Clipboard's
-    // multi-select "delete" bulk action.
-    fun removeItems(context: Context, itemIds: Set<String>) {
-        val current = getItems(context).toMutableList()
-        current.removeAll { it.id in itemIds }
-        save(context, current)
+    // Point: rewrites storage in exactly this id order - used by Settings >
+    // Clipboard's drag-to-reorder. Any stored item NOT mentioned in
+    // orderedIds (shouldn't normally happen) is kept, appended at the end,
+    // so a reorder call can never silently drop data.
+    fun reorder(context: Context, orderedIds: List<String>) {
+        val current = getItems(context)
+        val byId = current.associateBy { it.id }
+        val reordered = orderedIds.mapNotNull { byId[it] }
+        val remaining = current.filter { it.id !in orderedIds }
+        save(context, reordered + remaining)
     }
 
     fun clear(context: Context) {
