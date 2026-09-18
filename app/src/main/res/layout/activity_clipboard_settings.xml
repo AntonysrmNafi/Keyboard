@@ -41,59 +41,55 @@
             android:contentDescription="@string/clipboard_add_entry" />
     </LinearLayout>
 
-    <!-- Selection-mode top bar: X to cancel, "N selected", pin, delete -->
-    <LinearLayout
-        android:id="@+id/clipboard_selection_topbar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:padding="16dp"
-        android:visibility="gone">
-
-        <ImageView
-            android:id="@+id/clipboard_selection_cancel"
-            android:layout_width="26dp"
-            android:layout_height="26dp"
-            android:src="@drawable/ic_close_24"
-            android:tint="@color/clipboard_settings_text_primary"
-            android:paddingEnd="16dp" />
-
-        <TextView
-            android:id="@+id/clipboard_selection_count"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textColor="@color/clipboard_settings_text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <ImageView
-            android:id="@+id/clipboard_selection_pin"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/ic_pin_24"
-            android:tint="@color/clipboard_settings_accent"
-            android:paddingEnd="20dp" />
-
-        <ImageView
-            android:id="@+id/clipboard_selection_delete"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/ic_delete_24"
-            android:tint="@color/clipboard_settings_delete" />
-    </LinearLayout>
-
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
         <LinearLayout
-            android:id="@+id/clipboard_row_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="8dp" />
+            android:padding="8dp">
+
+            <TextView
+                android:id="@+id/clipboard_empty_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/clipboard_settings_text_secondary"
+                android:textSize="14sp"
+                android:padding="12dp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/clipboard_pinned_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/pinned_section_header"
+                android:textAllCaps="true"
+                android:textColor="@color/clipboard_settings_text_secondary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:padding="12dp"
+                android:visibility="gone" />
+
+            <!-- Point: two SEPARATE RecyclerViews (not one list with mixed
+                 view types) so drag-to-reorder can never accidentally drag a
+                 pinned item into the unpinned group or vice versa - each
+                 ItemTouchHelper is scoped to its own RecyclerView, so
+                 cross-section dragging isn't just prevented in code, it's
+                 structurally impossible. -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/clipboard_pinned_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/clipboard_unpinned_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false" />
+        </LinearLayout>
     </ScrollView>
 
 </LinearLayout>
