@@ -2,54 +2,145 @@ package com.blockveil.keyboard
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.Dialog
 import android.os.Bundle
-import android.text.TextUtils
-import android.widget.CheckBox
+import android.text.InputType
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import android.view.Window
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import java.text.SimpleDateFormat
-import java.util.Locale
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 
 class ClipboardSettingsActivity : Activity() {
 
-    private lateinit var rowContainer: LinearLayout
-    private lateinit var normalTopBar: LinearLayout
-    private lateinit var selectionTopBar: LinearLayout
-    private lateinit var selectionCountText: TextView
-
-    // Point: which item ids are checked, only meaningful while selection
-    // mode is active (selectionTopBar visible).
-    private val selectedIds = mutableSetOf<String>()
-    private val dateFormat = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
+    private lateinit var pinnedHeader: TextView
+    private lateinit var emptyLabel: TextView
+    private lateinit var pinnedList: RecyclerView
+    private lateinit var unpinnedList: RecyclerView
+    private lateinit var pinnedAdapter: ClipboardRowAdapter
+    private lateinit var unpinnedAdapter: ClipboardRowAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Point: this screen has its own dedicated layout (not the shared
         // activity_settings_section.xml every other Settings screen uses),
-        // because it needs a second "N selected" top bar and a +
-        // button that don't belong on any other screen.
+        // because it needs two reorderable RecyclerViews and a + button
+        // that don't belong on any other screen.
         setContentView(R.layout.activity_clipboard_settings)
-
-        normalTopBar = findViewById(R.id.clipboard_normal_topbar)
-        selectionTopBar = findViewById(R.id.clipboard_selection_topbar)
-        selectionCountText = findViewById(R.id.clipboard_selection_count)
-        rowContainer = findViewById(R.id.clipboard_row_container)
 
         findViewById<ImageView>(R.id.clipboard_back_button).setOnClickListener { finish() }
         findViewById<ImageView>(R.id.clipboard_add_button).setOnClickListener { showAddDialog() }
-        findViewById<ImageView>(R.id.clipboard_selection_cancel).setOnClickListener { exitSelectionMode() }
-        findViewById<ImageView>(R.id.clipboard_selection_pin).setOnClickListener {
-            ClipboardStore.setPinned(this, selectedIds.toSet(), true)
-            exitSelectionMode()
-        }
-        findViewById<ImageView>(R.id.clipboard_selection_delete).setOnClickListener {
-            ClipboardStore.removeItems(this, selectedIds.toSet())
-            exitSelectionMode()
-        }
+
+        pinnedHeader = findViewById(R.id.clipboard_pinned_header)
+        emptyLabel = findViewById(R.id.clipboard_empty_label)
+        pinnedList = findViewById(R.id.clipboard_pinned_list)
+        unpinnedList = findViewById(R.id.clipboard_unpinned_list)
+
+        pinnedAdapter = setUpSection(pinnedList)
+        unpinnedAdapter = setUpSection(unpinnedList)
 
         refresh()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Point: the 1-hour auto-expiry (see ClipboardStore) is checked
+        // lazily on read - refreshing here catches anything that expired
+        // while this screen was in the background.
+        refresh()
+    }
+
+    // Point: wires one section's RecyclerView with a LinearLayoutManager,
+    // its own adapter, and its own ItemTouchHelper restricted to up/down
+    // drag only (no swipe-to-dismiss - deleting is a deliberate action via
+    // the Edit Clip sheet, not an accidental swipe). Persists the new order
+    // the moment a drag finishes (clearView), not on every intermediate
+    // step, so a mid-drag app switch can't leave things half-saved.
+    private fun setUpSection(recyclerView: RecyclerView): ClipboardRowAdapter {
+        val adapter = ClipboardRowAdapter(
+            items = mutableListOf(),
+            onItemClick = { item -> showEditClipDialog(item) },
+            onStartDrag = { holder -> touchHelperFor(recyclerView)?.startDrag(holder) }
+        )
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.adapter = adapter
+        recyclerView.isNestedScrollingEnabled = false
+
+        val callback = object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
+        ) {
+            override fun onMove(
+                rv: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                adapter.moveItem(viewHolder.bindingAdapterPosition, target.bindingAdapterPosition)
+                return true
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                // Point: swipe is disabled (flags above are 0) - this is
+                // required by SimpleCallback but never actually invoked.
+            }
+
+            override fun clearView(rv: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+                super.clearView(rv, viewHolder)
+                persistOrder()
+            }
+        }
+        val helper = ItemTouchHelper(callback)
+        helper.attachToRecyclerView(recyclerView)
+        recyclerView.tag = helper
+        return adapter
+    }
+
+    private fun touchHelperFor(recyclerView: RecyclerView): ItemTouchHelper? =
+        recyclerView.tag as? ItemTouchHelper
+
+    private fun persistOrder() {
+        val order = pinnedAdapter.currentOrder().map { it.id } + unpinnedAdapter.currentOrder().map { it.id }
+        ClipboardStore.reorder(this, order)
+    }
+
+    private fun refresh() {
+        val items = ClipboardStore.getItems(this)
+        val (pinned, unpinned) = items.partition { it.pinned }
+
+        emptyLabel.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+        if (items.isEmpty()) {
+            emptyLabel.text = getString(R.string.clipboard_empty)
+        }
+
+        pinnedHeader.visibility = if (pinned.isNotEmpty()) View.VISIBLE else View.GONE
+        setSectionItems(pinnedList, pinnedAdapter, pinned)
+        setSectionItems(unpinnedList, unpinnedAdapter, unpinned)
+    }
+
+    private fun setSectionItems(
+        recyclerView: RecyclerView,
+        adapter: ClipboardRowAdapter,
+        items: List<ClipboardStore.ClipboardItem>
+    ) {
+        val current = adapter.currentOrder()
+        // Point: only reset+rebind when the underlying data actually
+        // changed (add/remove/pin toggle) - not on every refresh() call, so
+        // an in-progress drag's in-memory order isn't clobbered by a
+        // same-data refresh.
+        if (current.map { it.id } == items.map { it.id }) return
+        recyclerView.adapter = ClipboardRowAdapter(
+            items = items.toMutableList(),
+            onItemClick = { item -> showEditClipDialog(item) },
+            onStartDrag = { holder -> touchHelperFor(recyclerView)?.startDrag(holder) }
+        ).also {
+            if (recyclerView === pinnedList) pinnedAdapter = it else unpinnedAdapter = it
+        }
     }
 
     private fun showAddDialog() {
@@ -71,124 +162,153 @@ class ClipboardSettingsActivity : Activity() {
             .show()
     }
 
-    private fun enterSelectionMode(firstItemId: String) {
-        selectedIds.clear()
-        selectedIds.add(firstItemId)
-        normalTopBar.visibility = android.view.View.GONE
-        selectionTopBar.visibility = android.view.View.VISIBLE
-        refresh()
-    }
-
-    private fun exitSelectionMode() {
-        selectedIds.clear()
-        normalTopBar.visibility = android.view.View.VISIBLE
-        selectionTopBar.visibility = android.view.View.GONE
-        refresh()
-    }
-
-    private fun toggleSelected(itemId: String) {
-        if (!selectedIds.remove(itemId)) selectedIds.add(itemId)
-        if (selectedIds.isEmpty()) {
-            exitSelectionMode()
-        } else {
-            refresh()
-        }
-    }
-
-    private val isSelecting: Boolean get() = selectionTopBar.visibility == android.view.View.VISIBLE
-
-    private fun refresh() {
-        rowContainer.removeAllViews()
-        if (isSelecting) {
-            selectionCountText.text = getString(R.string.clipboard_selected_count, selectedIds.size)
+    // Point: "Edit Clip" bottom sheet - full (untruncated) editable text,
+    // a Pin/Unpin toggle and a Delete button up top (both apply
+    // immediately, no Save needed for those), and Cancel/Save for text
+    // edits. Built as a plain Dialog anchored to the bottom of the screen
+    // rather than a Material BottomSheetDialog, since this project doesn't
+    // otherwise depend on AndroidX Material - no need to add that whole
+    // library just for this one sheet's shape.
+    private fun showEditClipDialog(item: ClipboardStore.ClipboardItem) {
+        val dialog = Dialog(this).apply {
+            requestWindowFeature(Window.FEATURE_NO_TITLE)
+            window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+            window?.setGravity(Gravity.BOTTOM)
+            window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         }
 
-        val items = ClipboardStore.getItems(this)
+        var isPinned = item.pinned
+        lateinit var pinIcon: ImageView
 
-        if (items.isEmpty()) {
-            rowContainer.addView(TextView(this).apply {
-                text = getString(R.string.clipboard_empty)
-                setTextColor(resources.getColor(R.color.clipboard_settings_text_secondary))
-                textSize = 14f
-                setPadding(dp(20), dp(20), dp(20), dp(20))
-            })
-            return
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = resources.getDrawable(R.drawable.bg_bottom_sheet)
+            setPadding(dp(20), dp(16), dp(20), dp(24))
         }
 
-        items.forEach { item -> rowContainer.addView(buildRow(item)) }
-    }
+        // Drag-handle-style bar at the very top, purely decorative (matches
+        // the standard bottom-sheet affordance look).
+        root.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(4)).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                bottomMargin = dp(16)
+            }
+            setBackgroundColor(resources.getColor(R.color.clipboard_settings_text_secondary))
+        })
 
-    // Point: one row - checkbox (only visible/interactive in selection
-    // mode), preview text (same shared 120-char/25-per-line truncation as
-    // everywhere else) + a formatted timestamp underneath, and a drag-handle
-    // icon on the right matching the reference (decorative here - this list
-    // isn't reorderable, it's always newest-first like the keyboard's own
-    // clipboard panel).
-    private fun buildRow(item: ClipboardStore.ClipboardItem): LinearLayout {
-        val selected = item.id in selectedIds
-        val displayText = when (item.type) {
-            "text" -> ClipboardStore.buildPreview(item.text ?: "")
-            "image" -> "\uD83D\uDCCE Image (${item.imageBase64?.length?.div(1000) ?: 0}KB)"
-            else -> "(unknown)"
-        }
-        val row = LinearLayout(this).apply {
+        root.addView(LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER_VERTICAL
-            background = resources.getDrawable(
-                if (selected) R.drawable.bg_clipboard_settings_row_selected
-                else R.drawable.bg_clipboard_settings_row
-            )
+            gravity = Gravity.CENTER_VERTICAL
+
+            addView(TextView(this@ClipboardSettingsActivity).apply {
+                text = getString(R.string.clipboard_edit_title)
+                setTextColor(resources.getColor(R.color.clipboard_settings_text_primary))
+                textSize = 20f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+
+            pinIcon = ImageView(this@ClipboardSettingsActivity).apply {
+                setImageResource(R.drawable.ic_pin_24)
+                setColorFilter(
+                    resources.getColor(
+                        if (isPinned) R.color.clipboard_settings_accent else R.color.clipboard_settings_text_secondary
+                    )
+                )
+                background = resources.getDrawable(
+                    if (isPinned) R.drawable.bg_icon_button_outline_active else R.drawable.bg_icon_button_outline
+                )
+                layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginEnd = dp(10) }
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+                setOnClickListener {
+                    isPinned = !isPinned
+                    ClipboardStore.togglePin(this@ClipboardSettingsActivity, item.id)
+                    setColorFilter(
+                        resources.getColor(
+                            if (isPinned) R.color.clipboard_settings_accent else R.color.clipboard_settings_text_secondary
+                        )
+                    )
+                    background = resources.getDrawable(
+                        if (isPinned) R.drawable.bg_icon_button_outline_active else R.drawable.bg_icon_button_outline
+                    )
+                    refresh()
+                }
+            }
+            addView(pinIcon)
+
+            addView(ImageView(this@ClipboardSettingsActivity).apply {
+                setImageResource(R.drawable.ic_delete_24)
+                setColorFilter(resources.getColor(R.color.clipboard_settings_delete))
+                background = resources.getDrawable(R.drawable.bg_icon_button_outline_danger)
+                layoutParams = LinearLayout.LayoutParams(dp(40), dp(40))
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+                setOnClickListener {
+                    ClipboardStore.removeItem(this@ClipboardSettingsActivity, item.id)
+                    refresh()
+                    dialog.dismiss()
+                }
+            })
+        })
+
+        val input = EditText(this).apply {
+            setText(item.text ?: "")
+            setTextColor(resources.getColor(R.color.clipboard_settings_text_primary))
+            textSize = 15f
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            minLines = 3
+            maxLines = 8
+            gravity = Gravity.TOP or Gravity.START
+            background = resources.getDrawable(R.drawable.bg_edit_clip_input)
+            setPadding(dp(14), dp(14), dp(14), dp(14))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = dp(4)
-                bottomMargin = dp(4)
-            }
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            setOnClickListener {
-                if (isSelecting) toggleSelected(item.id)
-            }
-            setOnLongClickListener {
-                if (!isSelecting) enterSelectionMode(item.id)
-                true
-            }
+            ).apply { topMargin = dp(16) }
         }
+        root.addView(input)
 
-        row.addView(CheckBox(this).apply {
-            isChecked = selected
-            isClickable = false // the row itself handles the tap
-            visibility = if (isSelecting) android.view.View.VISIBLE else android.view.View.GONE
+        root.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { marginEnd = dp(12) }
-        })
-
-        row.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(20) }
 
             addView(TextView(this@ClipboardSettingsActivity).apply {
-                text = displayText
+                text = getString(R.string.cancel_label)
                 setTextColor(resources.getColor(R.color.clipboard_settings_text_primary))
                 textSize = 15f
-                maxLines = ClipboardStore.PREVIEW_MAX_LINES
-                ellipsize = TextUtils.TruncateAt.END
+                gravity = Gravity.CENTER
+                background = resources.getDrawable(R.drawable.bg_edit_clip_cancel)
+                setPadding(0, dp(14), 0, dp(14))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginEnd = dp(8)
+                }
+                setOnClickListener { dialog.dismiss() }
             })
+
             addView(TextView(this@ClipboardSettingsActivity).apply {
-                text = dateFormat.format(item.timestamp)
-                setTextColor(resources.getColor(R.color.clipboard_settings_text_secondary))
-                textSize = 12f
-                setPadding(0, dp(6), 0, 0)
+                text = getString(R.string.save_label)
+                setTextColor(resources.getColor(R.color.key_text))
+                textSize = 15f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                gravity = Gravity.CENTER
+                background = resources.getDrawable(R.drawable.bg_edit_clip_save)
+                setPadding(0, dp(14), 0, dp(14))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginStart = dp(8)
+                }
+                setOnClickListener {
+                    val newText = input.text?.toString().orEmpty()
+                    if (newText.isNotBlank()) {
+                        ClipboardStore.updateText(this@ClipboardSettingsActivity, item.id, newText)
+                    }
+                    refresh()
+                    dialog.dismiss()
+                }
             })
         })
 
-        row.addView(ImageView(this).apply {
-            setImageResource(R.drawable.ic_drag_handle_24)
-            setColorFilter(resources.getColor(R.color.clipboard_settings_text_secondary))
-            layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginStart = dp(12) }
-        })
-
-        return row
+        dialog.setContentView(root)
+        dialog.show()
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
