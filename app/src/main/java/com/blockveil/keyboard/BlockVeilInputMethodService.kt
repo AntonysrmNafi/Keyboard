@@ -1629,7 +1629,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
             textSize = 15f
             maxLines = 3
             ellipsize = TextUtils.TruncateAt.END
-            setPadding(0, dpPx(10), 0, 0)
+            setPadding(0, dpPx(5), 0, 0)
         })
         return card
     }
