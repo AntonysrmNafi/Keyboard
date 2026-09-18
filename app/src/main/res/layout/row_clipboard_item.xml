@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/bg_clipboard_settings_row"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="4dp"
+    android:padding="14dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/row_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/clipboard_settings_text_primary"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/row_timestamp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/clipboard_settings_text_secondary"
+            android:textSize="12sp"
+            android:paddingTop="6dp" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/row_drag_handle"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_marginStart="12dp"
+        android:src="@drawable/ic_drag_handle_24"
+        android:tint="@color/clipboard_settings_text_secondary" />
+
+</LinearLayout>
