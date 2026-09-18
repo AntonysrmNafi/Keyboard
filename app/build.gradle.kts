@@ -44,4 +44,8 @@ dependencies {
     // Security Lock PIN hash/salt, recovery email, My Dictionary words) with a key
     // held inside the device's hardware-backed Android Keystore.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    // Point: Settings > Clipboard's drag-to-reorder (ItemTouchHelper) needs a
+    // real RecyclerView - hand-rolling drag/swap math on a plain LinearLayout
+    // is exactly the kind of thing this well-tested library exists for.
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
 }
