@@ -87,6 +87,35 @@ object ClipboardStore {
         addItem(context, item)
     }
 
+    // Point: shared by every path that turns a picked/copied/screenshotted
+    // image into a base64 string for storage (ClipboardSettingsActivity's
+    // New Clip image picker, BlockVeilInputMethodService's explicit-copy
+    // listener, and ScreenshotJobService's auto-capture) - downscales to
+    // maxDim on the longest side and compresses as JPEG, since clipboard
+    // history is for quick reuse, not full-resolution storage, and this all
+    // lives in SharedPreferences which shouldn't balloon after a few images.
+    fun encodeImageUriToBase64(context: Context, uri: android.net.Uri, maxDim: Int = 1024): String? {
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+            val original = android.graphics.BitmapFactory.decodeStream(inputStream)
+            inputStream.close()
+            if (original == null) return null
+            val scale = (maxDim.toFloat() / maxOf(original.width, original.height)).coerceAtMost(1f)
+            val scaled = if (scale < 1f) {
+                android.graphics.Bitmap.createScaledBitmap(
+                    original, (original.width * scale).toInt(), (original.height * scale).toInt(), true
+                )
+            } else {
+                original
+            }
+            val outputStream = java.io.ByteArrayOutputStream()
+            scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, outputStream)
+            android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.DEFAULT)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     fun removeItem(context: Context, itemId: String) {
         val current = getItems(context).toMutableList()
         current.removeAll { it.id == itemId }
