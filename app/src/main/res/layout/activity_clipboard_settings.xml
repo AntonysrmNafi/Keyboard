@@ -84,6 +84,32 @@
                 android:layout_height="wrap_content"
                 android:nestedScrollingEnabled="false" />
 
+            <!-- Point: a thin divider between the Pinned and Recent groups,
+                 only shown when both are non-empty (see
+                 ClipboardSettingsActivity.refresh) - without it, when a
+                 Pinned section ends right where Recent begins, the two ran
+                 together with nothing marking the boundary. -->
+            <View
+                android:id="@+id/clipboard_section_divider"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="4dp"
+                android:background="@color/clipboard_settings_text_secondary"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/clipboard_recent_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/clipboard_recent_header"
+                android:textAllCaps="true"
+                android:textColor="@color/clipboard_settings_text_secondary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:padding="12dp"
+                android:visibility="gone" />
+
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/clipboard_unpinned_list"
                 android:layout_width="match_parent"
