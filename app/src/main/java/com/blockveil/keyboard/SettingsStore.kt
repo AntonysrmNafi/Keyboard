@@ -36,6 +36,10 @@ object SettingsStore {
     const val KEY_VOLUME_KEY_CURSOR = "volume_key_cursor"
     const val KEY_VOLUME_KEY_CURSOR_MEDIA = "volume_key_cursor_media"
 
+    // Clipboard
+    const val KEY_CLIPBOARD_RECENT_ITEMS = "clipboard_recent_items" // default true
+    const val KEY_CLIPBOARD_SHOW_IMAGES = "clipboard_show_images"   // default false, permission-gated
+
     private fun prefs(context: Context) =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
