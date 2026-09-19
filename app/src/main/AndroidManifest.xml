@@ -7,6 +7,17 @@
          by Android itself, not just app logic. -->
     <!-- VIBRATE is only used when the user turns on "Vibrate on keypress" in Preferences -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Point: declared so the OS CAN grant it (via system Settings, or
+         another part of the app later) - this app never calls
+         requestPermissions() for these itself. Auto-adding screenshots to
+         the clipboard only runs if one of these is ALREADY granted; if
+         neither is, that feature silently does nothing (see
+         BlockVeilInputMethodService's screenshot observer). READ_MEDIA_IMAGES
+         is the API 33+ successor to READ_EXTERNAL_STORAGE for images. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
 
     <application
         android:name=".BlockVeilApplication"
