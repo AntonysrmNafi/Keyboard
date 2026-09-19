@@ -1,8 +1,8 @@
 package com.blockveil.keyboard
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.app.Dialog
+import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
@@ -67,6 +67,10 @@ class ClipboardSettingsActivity : Activity() {
         val adapter = ClipboardRowAdapter(
             items = mutableListOf(),
             onItemClick = { item -> showEditClipDialog(item) },
+            onPinToggle = { item ->
+                ClipboardStore.togglePin(this, item.id)
+                refresh()
+            },
             onStartDrag = { holder -> touchHelperFor(recyclerView)?.startDrag(holder) }
         )
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -123,23 +127,181 @@ class ClipboardSettingsActivity : Activity() {
         unpinnedAdapter.updateItems(unpinned)
     }
 
+    // Point: "New Clip" bottom sheet, matching the reference - a title, an
+    // image-attach button top-right (picks a gallery image and adds it as
+    // its own image clip immediately, no text needed), a green-bordered
+    // multi-line text input, and Cancel/Save (Save greyed out and inert
+    // until there's actual text, matching the reference).
     private fun showAddDialog() {
+        val dialog = Dialog(this).apply {
+            requestWindowFeature(Window.FEATURE_NO_TITLE)
+            window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        }
+
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = resources.getDrawable(R.drawable.bg_bottom_sheet)
+            setPadding(dp(20), dp(16), dp(20), dp(24))
+        }
+
+        root.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(4)).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                bottomMargin = dp(16)
+            }
+            setBackgroundColor(resources.getColor(R.color.clipboard_settings_text_secondary))
+        })
+
+        root.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+
+            addView(TextView(this@ClipboardSettingsActivity).apply {
+                text = getString(R.string.clipboard_new_clip_title)
+                setTextColor(resources.getColor(R.color.clipboard_settings_text_primary))
+                textSize = 20f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+
+            addView(ImageView(this@ClipboardSettingsActivity).apply {
+                setImageResource(R.drawable.ic_image_24)
+                setColorFilter(resources.getColor(R.color.clipboard_settings_text_primary))
+                background = resources.getDrawable(R.drawable.bg_icon_button_outline)
+                layoutParams = LinearLayout.LayoutParams(dp(40), dp(40))
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+                setOnClickListener {
+                    dialog.dismiss()
+                    pickImageForNewClip()
+                }
+            })
+        })
+
         val input = EditText(this).apply {
             hint = getString(R.string.clipboard_add_hint)
-            setPadding(dp(20), dp(16), dp(20), dp(16))
+            setTextColor(resources.getColor(R.color.clipboard_settings_text_primary))
+            textSize = 15f
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            minLines = 3
+            maxLines = 8
+            gravity = Gravity.TOP or Gravity.START
+            background = resources.getDrawable(R.drawable.bg_new_clip_input)
+            setPadding(dp(14), dp(14), dp(14), dp(14))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(16) }
         }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.clipboard_add_entry)
-            .setView(input)
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                val text = input.text?.toString().orEmpty()
-                if (text.isNotBlank()) {
-                    ClipboardStore.addTextItem(this, text)
-                    refresh()
+        root.addView(input)
+
+        lateinit var saveButton: TextView
+        root.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(20) }
+
+            addView(TextView(this@ClipboardSettingsActivity).apply {
+                text = getString(R.string.cancel_label)
+                setTextColor(resources.getColor(R.color.clipboard_settings_text_primary))
+                textSize = 15f
+                gravity = Gravity.CENTER
+                background = resources.getDrawable(R.drawable.bg_edit_clip_cancel)
+                setPadding(0, dp(14), 0, dp(14))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginEnd = dp(8)
+                }
+                setOnClickListener { dialog.dismiss() }
+            })
+
+            saveButton = TextView(this@ClipboardSettingsActivity).apply {
+                text = getString(R.string.save_label)
+                setTextColor(resources.getColor(R.color.key_text))
+                textSize = 15f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                gravity = Gravity.CENTER
+                background = resources.getDrawable(R.drawable.bg_edit_clip_save_disabled)
+                isEnabled = false
+                setPadding(0, dp(14), 0, dp(14))
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginStart = dp(8)
+                }
+                setOnClickListener {
+                    val text = input.text?.toString().orEmpty()
+                    if (text.isNotBlank()) {
+                        ClipboardStore.addTextItem(this@ClipboardSettingsActivity, text)
+                        refresh()
+                        dialog.dismiss()
+                    }
                 }
             }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            addView(saveButton)
+        })
+
+        // Point: Save stays visually grey and functionally inert (the click
+        // listener above also no-ops on blank text) until real text is
+        // typed, matching the reference exactly.
+        input.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val hasText = s?.toString()?.isNotBlank() == true
+                saveButton.isEnabled = hasText
+                saveButton.background = resources.getDrawable(
+                    if (hasText) R.drawable.bg_edit_clip_save else R.drawable.bg_edit_clip_save_disabled
+                )
+            }
+        })
+
+        dialog.setContentView(root)
+        dialog.show()
+        dialog.window?.apply {
+            setGravity(Gravity.BOTTOM)
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+    }
+
+    // Point: launches the system image picker for "New Clip"'s image
+    // button. Uses the classic startActivityForResult/onActivityResult pair
+    // (not the newer Activity Result API) because this project's Activity
+    // base class is plain android.app.Activity, not ComponentActivity.
+    private fun pickImageForNewClip() {
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "image/*" }
+        startActivityForResult(intent, PICK_IMAGE_REQUEST_CODE)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != PICK_IMAGE_REQUEST_CODE || resultCode != Activity.RESULT_OK) return
+        val uri = data?.data ?: return
+        val base64 = encodeImageUriToBase64(uri) ?: return
+        ClipboardStore.addImageItem(this, base64)
+        refresh()
+    }
+
+    // Point: downscales the picked image before storing it (clipboard
+    // history is meant for quick reuse, not full-resolution photo storage -
+    // this keeps SharedPreferences, where ClipboardStore lives, from
+    // ballooning after just a couple of picked photos).
+    private fun encodeImageUriToBase64(uri: android.net.Uri): String? {
+        return try {
+            val inputStream = contentResolver.openInputStream(uri) ?: return null
+            val original = android.graphics.BitmapFactory.decodeStream(inputStream)
+            inputStream.close()
+            val maxDim = 1024
+            val scale = (maxDim.toFloat() / maxOf(original.width, original.height)).coerceAtMost(1f)
+            val scaled = if (scale < 1f) {
+                android.graphics.Bitmap.createScaledBitmap(
+                    original, (original.width * scale).toInt(), (original.height * scale).toInt(), true
+                )
+            } else {
+                original
+            }
+            val outputStream = java.io.ByteArrayOutputStream()
+            scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, outputStream)
+            android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.DEFAULT)
+        } catch (e: Exception) {
+            null
+        }
     }
 
     // Point: "Edit Clip" bottom sheet - full (untruncated) editable text,
@@ -298,4 +460,8 @@ class ClipboardSettingsActivity : Activity() {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    companion object {
+        private const val PICK_IMAGE_REQUEST_CODE = 4201
+    }
 }
