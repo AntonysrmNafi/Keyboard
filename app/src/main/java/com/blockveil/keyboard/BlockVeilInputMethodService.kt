@@ -269,13 +269,100 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
         }
         clipboardListener = listener
         clipboardManager?.addPrimaryClipChangedListener(listener)
+
+        registerScreenshotObserver()
     }
 
-    // Point 1: automatic screenshot-detection (MediaStore ContentObserver + the
-    // storage permission it required) has been removed entirely per request -
-    // no permission prompt will be shown. This still captures an image the
-    // normal way: whenever something is explicitly copied to the system
-    // clipboard (e.g. long-press an image -> Copy, or Share -> Copy).
+    // Point: auto-adds new screenshots to the clipboard, but ONLY if
+    // READ_MEDIA_IMAGES (API 33+) or READ_EXTERNAL_STORAGE (older) is
+    // ALREADY granted - this NEVER calls requestPermissions() itself, so no
+    // permission prompt is ever shown from here. If neither is granted, this
+    // silently does nothing and the rest of the keyboard is unaffected.
+    private var screenshotObserver: android.database.ContentObserver? = null
+    private var lastScreenshotUriProcessed: String? = null
+
+    private fun hasImageReadPermission(): Boolean {
+        val permission = if (android.os.Build.VERSION.SDK_INT >= 33) {
+            android.Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            android.Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+        return checkSelfPermission(permission) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun registerScreenshotObserver() {
+        if (!hasImageReadPermission()) return
+        val observer = object : android.database.ContentObserver(android.os.Handler(mainLooper)) {
+            override fun onChange(selfChange: Boolean, uri: android.net.Uri?) {
+                super.onChange(selfChange, uri)
+                handleMediaStoreChange()
+            }
+        }
+        screenshotObserver = observer
+        contentResolver.registerContentObserver(
+            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            true,
+            observer
+        )
+    }
+
+    private fun unregisterScreenshotObserver() {
+        screenshotObserver?.let { contentResolver.unregisterContentObserver(it) }
+        screenshotObserver = null
+    }
+
+    // Point: queries for the single most-recently-added image and checks
+    // whether it LOOKS like a screenshot (standard "Screenshot" naming or
+    // the common Screenshots folder) before adding it - this fires on every
+    // MediaStore image change, not just screenshots, so this filter is what
+    // keeps a regular saved photo or downloaded image from also being
+    // auto-added.
+    private fun handleMediaStoreChange() {
+        if (!hasImageReadPermission()) return
+        try {
+            val projection = arrayOf(
+                android.provider.MediaStore.Images.Media._ID,
+                android.provider.MediaStore.Images.Media.DISPLAY_NAME,
+                android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+                android.provider.MediaStore.Images.Media.DATE_ADDED
+            )
+            contentResolver.query(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                null,
+                null,
+                "${android.provider.MediaStore.Images.Media.DATE_ADDED} DESC LIMIT 1"
+            )?.use { cursor ->
+                if (!cursor.moveToFirst()) return
+                val id = cursor.getLong(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media._ID))
+                val name = cursor.getString(
+                    cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media.DISPLAY_NAME)
+                ) ?: ""
+                val path = cursor.getString(
+                    cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media.RELATIVE_PATH)
+                ) ?: ""
+                val uri = android.content.ContentUris.withAppendedId(
+                    android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id
+                )
+                val uriKey = uri.toString()
+                if (uriKey == lastScreenshotUriProcessed) return
+                val looksLikeScreenshot = name.contains("Screenshot", ignoreCase = true) ||
+                    path.contains("Screenshot", ignoreCase = true)
+                if (!looksLikeScreenshot) return
+                lastScreenshotUriProcessed = uriKey
+                storeImageFromUri(uri)
+            }
+        } catch (e: Exception) {
+            // Silent fail - a permission revoked mid-session, a locked
+            // MediaStore row, etc. should never crash the keyboard.
+        }
+    }
+
+    // Point: shared by both paths that add an image to the clipboard -
+    // something explicitly copied to the system clipboard (long-press an
+    // image -> Copy, or Share -> Copy) via the listener in onCreate, AND
+    // (when permission already allows it) a new screenshot detected by
+    // handleMediaStoreChange above.
     private fun storeImageFromUri(uri: android.net.Uri) {
         try {
             val bitmap = android.provider.MediaStore.Images.Media.getBitmap(contentResolver, uri)
@@ -306,6 +393,7 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
 
     override fun onDestroy() {
         clipboardListener?.let { clipboardManager?.removePrimaryClipChangedListener(it) }
+        unregisterScreenshotObserver()
         actionToastHideRunnable?.let { actionToastHandler.removeCallbacks(it) }
         cachedInputView = null
         super.onDestroy()
@@ -1604,25 +1692,27 @@ class BlockVeilInputMethodService : InputMethodService(), KeyboardView.OnKeyboar
                 true
             }
         }
-        if (!item.pinned) {
-            card.addView(ImageView(this).apply {
-                setImageResource(R.drawable.ic_pin_24)
-                background = resources.getDrawable(R.drawable.bg_pin_badge).mutate()
-                (background as? android.graphics.drawable.GradientDrawable)?.setColor(
-                    resources.getColor(R.color.clipboard_pin_inactive)
-                )
-                setColorFilter(resources.getColor(R.color.clipboard_pin_icon))
-                // Point: badge size reduced 37% from the original 32dp (32 * 0.63 = ~20dp),
-                // padding scaled down to match (7 * 0.63 = ~4dp).
-                val size = dpPx(20)
-                layoutParams = LinearLayout.LayoutParams(size, size)
-                setPadding(dpPx(4), dpPx(4), dpPx(4), dpPx(4))
-                setOnClickListener {
-                    ClipboardStore.togglePin(this@BlockVeilInputMethodService, item.id)
-                    refreshClipboardList()
-                }
-            })
-        }
+        // Point: pin badge now ALWAYS shows (both pinned and unpinned),
+        // color-coded (accent green = pinned, muted grey = not) - it used
+        // to be hidden entirely once pinned, which meant there was no way
+        // to unpin an item from this grid at all except the long-press menu.
+        card.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_pin_24)
+            background = resources.getDrawable(R.drawable.bg_pin_badge).mutate()
+            (background as? android.graphics.drawable.GradientDrawable)?.setColor(
+                resources.getColor(if (item.pinned) R.color.accent_mint else R.color.clipboard_pin_inactive)
+            )
+            setColorFilter(resources.getColor(R.color.clipboard_pin_icon))
+            // Point: badge size reduced 37% from the original 32dp (32 * 0.63 = ~20dp),
+            // padding scaled down to match (7 * 0.63 = ~4dp).
+            val size = dpPx(20)
+            layoutParams = LinearLayout.LayoutParams(size, size)
+            setPadding(dpPx(4), dpPx(4), dpPx(4), dpPx(4))
+            setOnClickListener {
+                ClipboardStore.togglePin(this@BlockVeilInputMethodService, item.id)
+                refreshClipboardList()
+            }
+        })
         card.addView(TextView(this).apply {
             text = displayText
             setTextColor(resources.getColor(R.color.clipboard_card_text))
