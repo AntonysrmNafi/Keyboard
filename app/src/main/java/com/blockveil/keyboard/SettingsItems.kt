@@ -44,6 +44,18 @@ object SettingsItems {
             "Sound on keypress",
             "Play the system click sound on every key",
             false
+        ),
+        ToggleItem(
+            SettingsStore.KEY_CLIPBOARD_RECENT_ITEMS,
+            "Clipboard Recent Items",
+            "Show recent copied or cut text in clipboard",
+            true
+        ),
+        ToggleItem(
+            SettingsStore.KEY_CLIPBOARD_SHOW_IMAGES,
+            "Show copied images on Clipboard",
+            "Show screenshots or copied images on Clipboard",
+            false
         )
     )
 
