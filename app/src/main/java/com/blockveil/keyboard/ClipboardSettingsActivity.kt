@@ -21,6 +21,8 @@ import androidx.recyclerview.widget.RecyclerView
 class ClipboardSettingsActivity : Activity() {
 
     private lateinit var pinnedHeader: TextView
+    private lateinit var recentHeader: TextView
+    private lateinit var sectionDivider: View
     private lateinit var emptyLabel: TextView
     private lateinit var pinnedList: RecyclerView
     private lateinit var unpinnedList: RecyclerView
@@ -39,6 +41,8 @@ class ClipboardSettingsActivity : Activity() {
         findViewById<ImageView>(R.id.clipboard_add_button).setOnClickListener { showAddDialog() }
 
         pinnedHeader = findViewById(R.id.clipboard_pinned_header)
+        recentHeader = findViewById(R.id.clipboard_recent_header)
+        sectionDivider = findViewById(R.id.clipboard_section_divider)
         emptyLabel = findViewById(R.id.clipboard_empty_label)
         pinnedList = findViewById(R.id.clipboard_pinned_list)
         unpinnedList = findViewById(R.id.clipboard_unpinned_list)
@@ -122,7 +126,16 @@ class ClipboardSettingsActivity : Activity() {
             emptyLabel.text = getString(R.string.clipboard_empty)
         }
 
+        // Point: both section headers, and the divider between them, only
+        // show when relevant - "Pinned" only if something's actually
+        // pinned, "Recent" only if there's something unpinned to label, and
+        // the divider only when BOTH are present (nothing to divide
+        // otherwise). This is the clear Pinned/Recent separation the
+        // keyboard's own clipboard panel already has.
         pinnedHeader.visibility = if (pinned.isNotEmpty()) View.VISIBLE else View.GONE
+        recentHeader.visibility = if (unpinned.isNotEmpty()) View.VISIBLE else View.GONE
+        sectionDivider.visibility = if (pinned.isNotEmpty() && unpinned.isNotEmpty()) View.VISIBLE else View.GONE
+
         pinnedAdapter.updateItems(pinned)
         unpinnedAdapter.updateItems(unpinned)
     }
@@ -273,35 +286,9 @@ class ClipboardSettingsActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != PICK_IMAGE_REQUEST_CODE || resultCode != Activity.RESULT_OK) return
         val uri = data?.data ?: return
-        val base64 = encodeImageUriToBase64(uri) ?: return
+        val base64 = ClipboardStore.encodeImageUriToBase64(this, uri) ?: return
         ClipboardStore.addImageItem(this, base64)
         refresh()
-    }
-
-    // Point: downscales the picked image before storing it (clipboard
-    // history is meant for quick reuse, not full-resolution photo storage -
-    // this keeps SharedPreferences, where ClipboardStore lives, from
-    // ballooning after just a couple of picked photos).
-    private fun encodeImageUriToBase64(uri: android.net.Uri): String? {
-        return try {
-            val inputStream = contentResolver.openInputStream(uri) ?: return null
-            val original = android.graphics.BitmapFactory.decodeStream(inputStream)
-            inputStream.close()
-            val maxDim = 1024
-            val scale = (maxDim.toFloat() / maxOf(original.width, original.height)).coerceAtMost(1f)
-            val scaled = if (scale < 1f) {
-                android.graphics.Bitmap.createScaledBitmap(
-                    original, (original.width * scale).toInt(), (original.height * scale).toInt(), true
-                )
-            } else {
-                original
-            }
-            val outputStream = java.io.ByteArrayOutputStream()
-            scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, outputStream)
-            android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.DEFAULT)
-        } catch (e: Exception) {
-            null
-        }
     }
 
     // Point: "Edit Clip" bottom sheet - full (untruncated) editable text,
