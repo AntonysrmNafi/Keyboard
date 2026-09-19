@@ -17,6 +17,7 @@ import java.util.Locale
 class ClipboardRowAdapter(
     private val items: MutableList<ClipboardStore.ClipboardItem>,
     private val onItemClick: (ClipboardStore.ClipboardItem) -> Unit,
+    private val onPinToggle: (ClipboardStore.ClipboardItem) -> Unit,
     private val onStartDrag: (RecyclerView.ViewHolder) -> Unit
 ) : RecyclerView.Adapter<ClipboardRowAdapter.RowViewHolder>() {
 
@@ -25,6 +26,7 @@ class ClipboardRowAdapter(
     class RowViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val text: TextView = view.findViewById(R.id.row_text)
         val timestamp: TextView = view.findViewById(R.id.row_timestamp)
+        val pin: android.widget.ImageView = view.findViewById(R.id.row_pin)
         val dragHandle: View = view.findViewById(R.id.row_drag_handle)
     }
 
@@ -47,6 +49,19 @@ class ClipboardRowAdapter(
         }
         holder.timestamp.text = dateFormat.format(item.timestamp)
         holder.itemView.setOnClickListener { onItemClick(item) }
+        // Point: pin icon always shows here regardless of pinned state
+        // (color-coded: accent when pinned, muted when not) - this row is
+        // its own always-visible unpin/pin control, on top of the same
+        // toggle also being reachable from the Edit Clip sheet.
+        val context = holder.pin.context
+        holder.pin.apply {
+            setColorFilter(
+                context.resources.getColor(
+                    if (item.pinned) R.color.clipboard_settings_accent else R.color.clipboard_settings_text_secondary
+                )
+            )
+            setOnClickListener { onPinToggle(item) }
+        }
         // Point: drag only starts from the handle icon (not anywhere on the
         // row), so a plain tap on the row's text always opens Edit Clip
         // instead of racing against a drag gesture.
