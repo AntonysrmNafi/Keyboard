@@ -113,7 +113,7 @@ class SettingsSectionActivity : Activity() {
             }
         } else {
             switch.setOnCheckedChangeListener { _, isChecked ->
-                SettingsStore.setBoolean(context, item.key, isChecked)
+                SettingsStore.setBoolean(this, item.key, isChecked)
             }
         }
 
