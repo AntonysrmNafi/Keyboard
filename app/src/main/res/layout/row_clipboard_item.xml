@@ -32,6 +32,14 @@
     </LinearLayout>
 
     <ImageView
+        android:id="@+id/row_pin"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:layout_marginStart="8dp"
+        android:padding="3dp"
+        android:src="@drawable/ic_pin_24" />
+
+    <ImageView
         android:id="@+id/row_drag_handle"
         android:layout_width="22dp"
         android:layout_height="22dp"
